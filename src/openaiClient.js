@@ -44,6 +44,10 @@ class OpenAIClient {
     const stats = requestContext.getStats();
     console.log(`[OPENAI] All ${stats.totalKeys} keys tried for this request. ${stats.rateLimitedKeys} were rate limited.`);
     
+    // Update the KeyRotator with the last failed key from this request
+    const lastFailedKey = requestContext.getLastFailedKey();
+    this.keyRotator.updateLastFailedKey(lastFailedKey);
+    
     // If all tried keys were rate limited, return 429
     if (requestContext.allTriedKeysRateLimited()) {
       console.log('[OPENAI] All keys rate limited for this request - returning 429');
