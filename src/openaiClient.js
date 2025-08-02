@@ -8,22 +8,25 @@ class OpenAIClient {
   }
 
   async makeRequest(method, path, body, headers = {}) {
+    // Create a new request context for this specific request
+    const requestContext = this.keyRotator.createRequestContext();
     let lastError = null;
-    let attemptCount = 0;
+    let lastResponse = null;
     
-    while (this.keyRotator.getCurrentKey()) {
-      const apiKey = this.keyRotator.getCurrentKey();
+    // Try each available key for this request
+    let apiKey;
+    while ((apiKey = requestContext.getNextKey()) !== null) {
       const maskedKey = this.maskApiKey(apiKey);
-      attemptCount++;
       
-      console.log(`[OPENAI::${maskedKey}] Attempting ${method} ${path} (attempt ${attemptCount})`);
+      console.log(`[OPENAI::${maskedKey}] Attempting ${method} ${path}`);
       
       try {
         const response = await this.sendRequest(method, path, body, headers, apiKey);
         
         if (response.statusCode === 429) {
-          console.log(`[OPENAI::${maskedKey}] Rate limited (429) - rotating to next key`);
-          this.keyRotator.markCurrentKeyAsFailed();
+          console.log(`[OPENAI::${maskedKey}] Rate limited (429) - trying next key`);
+          requestContext.markKeyAsRateLimited(apiKey);
+          lastResponse = response; // Keep the 429 response in case all keys fail
           continue;
         }
         
@@ -32,18 +35,24 @@ class OpenAIClient {
       } catch (error) {
         console.log(`[OPENAI::${maskedKey}] Request failed: ${error.message}`);
         lastError = error;
-        this.keyRotator.markCurrentKeyAsFailed();
+        // For non-429 errors, we still try the next key
+        continue;
       }
     }
     
-    if (this.keyRotator.allKeysFailed()) {
-      console.log('[OPENAI-CLIENT] All API keys exhausted - returning 429');
-      return {
+    // All keys have been tried for this request
+    const stats = requestContext.getStats();
+    console.log(`[OPENAI] All ${stats.totalKeys} keys tried for this request. ${stats.rateLimitedKeys} were rate limited.`);
+    
+    // If all tried keys were rate limited, return 429
+    if (requestContext.allTriedKeysRateLimited()) {
+      console.log('[OPENAI] All keys rate limited for this request - returning 429');
+      return lastResponse || {
         statusCode: 429,
         headers: { 'content-type': 'application/json' },
         data: JSON.stringify({
           error: {
-            message: 'All OpenAI API keys have been rate limited',
+            message: 'All OpenAI API keys have been rate limited for this request',
             type: 'rate_limit_exceeded',
             code: 'rate_limit_exceeded'
           }
@@ -51,7 +60,13 @@ class OpenAIClient {
       };
     }
     
-    throw lastError;
+    // If we had other types of errors, throw the last one
+    if (lastError) {
+      throw lastError;
+    }
+    
+    // Fallback error
+    throw new Error('All API keys exhausted without clear error');
   }
 
   sendRequest(method, path, body, headers, apiKey) {

@@ -2,72 +2,109 @@ class KeyRotator {
   constructor(apiKeys, apiType = 'unknown') {
     this.apiKeys = [...apiKeys];
     this.apiType = apiType;
-    this.currentIndex = 0;
-    this.failedKeys = new Set();
     console.log(`[${apiType.toUpperCase()}-ROTATOR] Initialized with ${this.apiKeys.length} API keys`);
   }
 
-  getCurrentKey() {
-    if (this.allKeysFailed()) {
-      console.log(`[${this.apiType.toUpperCase()}-ROTATOR] All keys have failed - no available keys`);
-      return null;
-    }
-    const key = this.apiKeys[this.currentIndex];
-    const maskedKey = this.maskApiKey(key);
-    console.log(`[${this.apiType.toUpperCase()}::${maskedKey}] Currently active API key (${this.currentIndex + 1}/${this.apiKeys.length})`);
-    return key;
-  }
-
-  markCurrentKeyAsFailed() {
-    const currentKey = this.apiKeys[this.currentIndex];
-    const maskedKey = this.maskApiKey(currentKey);
-    this.failedKeys.add(currentKey);
-    console.log(`[${this.apiType.toUpperCase()}::${maskedKey}] Key marked as failed (${this.failedKeys.size}/${this.apiKeys.length} failed)`);
-    this.rotateToNextKey();
-  }
-
-  rotateToNextKey() {
-    let attempts = 0;
-    const maxAttempts = this.apiKeys.length;
-    const oldIndex = this.currentIndex;
-
-    do {
-      this.currentIndex = (this.currentIndex + 1) % this.apiKeys.length;
-      attempts++;
-      
-      if (attempts >= maxAttempts) {
-        console.log(`[${this.apiType.toUpperCase()}-ROTATOR] All keys exhausted during rotation`);
-        break;
-      }
-    } while (this.isCurrentKeyFailed());
-
-    if (!this.allKeysFailed()) {
-      const newKey = this.maskApiKey(this.apiKeys[this.currentIndex]);
-      console.log(`[${this.apiType.toUpperCase()}-ROTATOR] Rotated from index ${oldIndex} to ${this.currentIndex} -> [${this.apiType.toUpperCase()}::${newKey}]`);
-    }
-  }
-
-  isCurrentKeyFailed() {
-    return this.failedKeys.has(this.apiKeys[this.currentIndex]);
-  }
-
-  allKeysFailed() {
-    return this.failedKeys.size >= this.apiKeys.length;
-  }
-
-  resetFailedKeys() {
-    const previousFailedCount = this.failedKeys.size;
-    this.failedKeys.clear();
-    this.currentIndex = 0;
-    console.log(`[${this.apiType.toUpperCase()}-ROTATOR] Reset ${previousFailedCount} failed keys, starting fresh`);
-  }
-
-  getFailedKeysCount() {
-    return this.failedKeys.size;
+  /**
+   * Creates a new request context for per-request key rotation
+   * @returns {RequestKeyContext} A new context for managing keys for a single request
+   */
+  createRequestContext() {
+    return new RequestKeyContext(this.apiKeys, this.apiType);
   }
 
   getTotalKeysCount() {
     return this.apiKeys.length;
+  }
+
+  maskApiKey(key) {
+    if (!key || key.length < 8) return '***';
+    return key.substring(0, 4) + '...' + key.substring(key.length - 4);
+  }
+}
+
+/**
+ * Manages API key rotation for a single request
+ * Each request gets its own context to try all available keys
+ */
+class RequestKeyContext {
+  constructor(apiKeys, apiType) {
+    this.apiKeys = [...apiKeys];
+    this.apiType = apiType;
+    this.currentIndex = 0;
+    this.triedKeys = new Set();
+    this.rateLimitedKeys = new Set();
+  }
+
+  /**
+   * Gets the next available key to try for this request
+   * @returns {string|null} The next API key to try, or null if all keys have been tried
+   */
+  getNextKey() {
+    // If we've tried all keys, return null
+    if (this.triedKeys.size >= this.apiKeys.length) {
+      return null;
+    }
+
+    // Find the next untried key
+    let attempts = 0;
+    while (attempts < this.apiKeys.length) {
+      const key = this.apiKeys[this.currentIndex];
+      
+      if (!this.triedKeys.has(key)) {
+        this.triedKeys.add(key);
+        const maskedKey = this.maskApiKey(key);
+        console.log(`[${this.apiType.toUpperCase()}::${maskedKey}] Trying key (${this.triedKeys.size}/${this.apiKeys.length} tried for this request)`);
+        return key;
+      }
+      
+      this.currentIndex = (this.currentIndex + 1) % this.apiKeys.length;
+      attempts++;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Marks the current key as rate limited for this request
+   * @param {string} key The API key that was rate limited
+   */
+  markKeyAsRateLimited(key) {
+    this.rateLimitedKeys.add(key);
+    const maskedKey = this.maskApiKey(key);
+    console.log(`[${this.apiType.toUpperCase()}::${maskedKey}] Rate limited for this request (${this.rateLimitedKeys.size}/${this.triedKeys.size} rate limited)`);
+    
+    // Move to next key for the next attempt
+    this.currentIndex = (this.currentIndex + 1) % this.apiKeys.length;
+  }
+
+  /**
+   * Checks if all tried keys were rate limited
+   * @returns {boolean} True if all keys that were tried returned 429
+   */
+  allTriedKeysRateLimited() {
+    return this.triedKeys.size > 0 && this.rateLimitedKeys.size === this.triedKeys.size;
+  }
+
+  /**
+   * Checks if all available keys have been tried
+   * @returns {boolean} True if all keys have been attempted
+   */
+  allKeysTried() {
+    return this.triedKeys.size >= this.apiKeys.length;
+  }
+
+  /**
+   * Gets statistics about this request's key usage
+   * @returns {object} Statistics object
+   */
+  getStats() {
+    return {
+      totalKeys: this.apiKeys.length,
+      triedKeys: this.triedKeys.size,
+      rateLimitedKeys: this.rateLimitedKeys.size,
+      hasUntriedKeys: this.triedKeys.size < this.apiKeys.length
+    };
   }
 
   maskApiKey(key) {
