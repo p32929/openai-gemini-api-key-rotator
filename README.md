@@ -17,7 +17,7 @@ A robust Node.js proxy server that automatically rotates API keys for **Gemini**
 ### 1. Installation
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/p32929/openai-gemini-api-key-rotator.git
 cd openai-gemini-api-key-rotator
 ```
 
