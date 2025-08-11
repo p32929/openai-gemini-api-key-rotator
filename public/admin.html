@@ -237,7 +237,11 @@
             background-color: var(--foreground);
             border-radius: 50%;
             transition: transform 0.2s ease;
-            border: 2px solid var(--background);
+            border: 2px solid #000000;
+        }
+        
+        .dark .theme-toggle::before {
+            border: 2px solid #ffffff;
         }
         
         .theme-toggle.dark::before {
