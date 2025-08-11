@@ -7,143 +7,328 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
-          --background: oklch(0.9900 0 0);
-          --foreground: oklch(0 0 0);
-          --card: oklch(1 0 0);
-          --card-foreground: oklch(0 0 0);
-          --popover: oklch(0.9900 0 0);
-          --popover-foreground: oklch(0 0 0);
-          --primary: oklch(0 0 0);
-          --primary-foreground: oklch(1 0 0);
-          --secondary: oklch(0.9400 0 0);
-          --secondary-foreground: oklch(0 0 0);
-          --muted: oklch(0.9700 0 0);
-          --muted-foreground: oklch(0.4400 0 0);
-          --accent: oklch(0.9400 0 0);
-          --accent-foreground: oklch(0 0 0);
-          --destructive: oklch(0.6300 0.1900 23.0300);
-          --destructive-foreground: oklch(1 0 0);
-          --border: oklch(0.9200 0 0);
-          --input: oklch(0.9400 0 0);
-          --ring: oklch(0 0 0);
-          --chart-1: oklch(0.8100 0.1700 75.3500);
-          --chart-2: oklch(0.5500 0.2200 264.5300);
-          --chart-3: oklch(0.7200 0 0);
-          --chart-4: oklch(0.9200 0 0);
-          --chart-5: oklch(0.5600 0 0);
-          --sidebar: oklch(0.9900 0 0);
-          --sidebar-foreground: oklch(0 0 0);
-          --sidebar-primary: oklch(0 0 0);
-          --sidebar-primary-foreground: oklch(1 0 0);
-          --sidebar-accent: oklch(0.9400 0 0);
-          --sidebar-accent-foreground: oklch(0 0 0);
-          --sidebar-border: oklch(0.9400 0 0);
-          --sidebar-ring: oklch(0 0 0);
-          --font-sans: Geist, sans-serif;
-          --font-serif: Georgia, serif;
-          --font-mono: Geist Mono, monospace;
+          --background: #fafafa;
+          --foreground: #0a0a0a;
+          --card: #ffffff;
+          --card-foreground: #0a0a0a;
+          --popover: #ffffff;
+          --popover-foreground: #0a0a0a;
+          --primary: #18181b;
+          --primary-foreground: #fafafa;
+          --secondary: #f4f4f5;
+          --secondary-foreground: #0a0a0a;
+          --muted: #f4f4f5;
+          --muted-foreground: #71717a;
+          --accent: #f4f4f5;
+          --accent-foreground: #0a0a0a;
+          --destructive: #ef4444;
+          --destructive-foreground: #fafafa;
+          --border: #e4e4e7;
+          --input: #ffffff;
+          --ring: #18181b;
+          --success: #22c55e;
+          --success-foreground: #ffffff;
+          --warning: #f59e0b;
+          --warning-foreground: #ffffff;
+          --info: #3b82f6;
+          --info-foreground: #ffffff;
           --radius: 0.5rem;
-          --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
-          --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
-          --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
-          --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
-          --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
-          --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
-          --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
-          --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
-          --tracking-normal: 0em;
-          --spacing: 0.25rem;
+          --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+          --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+          --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+          --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
         }
 
         .dark {
-          --background: oklch(0 0 0);
-          --foreground: oklch(1 0 0);
-          --card: oklch(0.1400 0 0);
-          --card-foreground: oklch(1 0 0);
-          --popover: oklch(0.1800 0 0);
-          --popover-foreground: oklch(1 0 0);
-          --primary: oklch(1 0 0);
-          --primary-foreground: oklch(0 0 0);
-          --secondary: oklch(0.2500 0 0);
-          --secondary-foreground: oklch(1 0 0);
-          --muted: oklch(0.2300 0 0);
-          --muted-foreground: oklch(0.7200 0 0);
-          --accent: oklch(0.3200 0 0);
-          --accent-foreground: oklch(1 0 0);
-          --destructive: oklch(0.6900 0.2000 23.9100);
-          --destructive-foreground: oklch(0 0 0);
-          --border: oklch(0.2600 0 0);
-          --input: oklch(0.3200 0 0);
-          --ring: oklch(0.7200 0 0);
-          --chart-1: oklch(0.8100 0.1700 75.3500);
-          --chart-2: oklch(0.5800 0.2100 260.8400);
-          --chart-3: oklch(0.5600 0 0);
-          --chart-4: oklch(0.4400 0 0);
-          --chart-5: oklch(0.9200 0 0);
-          --sidebar: oklch(0.1800 0 0);
-          --sidebar-foreground: oklch(1 0 0);
-          --sidebar-primary: oklch(1 0 0);
-          --sidebar-primary-foreground: oklch(0 0 0);
-          --sidebar-accent: oklch(0.3200 0 0);
-          --sidebar-accent-foreground: oklch(1 0 0);
-          --sidebar-border: oklch(0.3200 0 0);
-          --sidebar-ring: oklch(0.7200 0 0);
-          --font-sans: Geist, sans-serif;
-          --font-serif: Georgia, serif;
-          --font-mono: Geist Mono, monospace;
-          --radius: 0.5rem;
-          --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
-          --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
-          --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
-          --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
-          --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
-          --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
-          --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
-          --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+          --background: #0a0a0a;
+          --foreground: #fafafa;
+          --card: #18181b;
+          --card-foreground: #fafafa;
+          --popover: #18181b;
+          --popover-foreground: #fafafa;
+          --primary: #fafafa;
+          --primary-foreground: #18181b;
+          --secondary: #27272a;
+          --secondary-foreground: #fafafa;
+          --muted: #27272a;
+          --muted-foreground: #a1a1aa;
+          --accent: #27272a;
+          --accent-foreground: #fafafa;
+          --destructive: #ef4444;
+          --destructive-foreground: #fafafa;
+          --border: #27272a;
+          --input: #18181b;
+          --ring: #d4d4d8;
+          --success: #22c55e;
+          --success-foreground: #ffffff;
+          --warning: #f59e0b;
+          --warning-foreground: #ffffff;
+          --info: #3b82f6;
+          --info-foreground: #ffffff;
+          --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+          --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+          --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+          --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+        }
+        
+        * {
+            box-sizing: border-box;
         }
         
         body {
             background-color: var(--background);
             color: var(--foreground);
-            font-family: var(--font-sans);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         
-        .card {
+        .section {
             background-color: var(--card);
-            color: var(--card-foreground);
-            border: 1px solid var(--border);
+            color: var(--foreground);
+            border-left: 3px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
             box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+        }
+        
+        .section:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        
+        .section-header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .input-group {
+            background-color: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        
+        .input-group:hover {
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .key-row {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .key-row:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-sm);
+            transform: translateX(4px);
+        }
+        
+        .key-row::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: var(--primary);
+            border-radius: var(--radius) 0 0 var(--radius);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .key-row:hover::before {
+            opacity: 1;
+        }
+        
+        .login-container {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-xl);
+            transition: all 0.3s ease;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .btn {
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
         }
         
         .btn-primary {
             background-color: var(--primary);
             color: var(--primary-foreground);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
         }
         
         .btn-secondary {
             background-color: var(--secondary);
             color: var(--secondary-foreground);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--accent);
+            box-shadow: var(--shadow-sm);
         }
         
         .btn-destructive {
             background-color: var(--destructive);
             color: var(--destructive-foreground);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .btn-destructive:hover {
+            background-color: #dc2626;
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+            color: var(--success-foreground);
+        }
+        
+        .btn-warning {
+            background-color: var(--warning);
+            color: var(--warning-foreground);
+        }
+        
+        .btn-info {
+            background-color: var(--info);
+            color: var(--info-foreground);
         }
         
         .input-field {
             background-color: var(--input);
             border: 1px solid var(--border);
             color: var(--foreground);
+            border-radius: var(--radius);
+            transition: all 0.3s ease;
+            font-family: inherit;
         }
         
         .input-field:focus {
             outline: none;
-            border-color: var(--ring);
-            box-shadow: 0 0 0 2px var(--ring);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .dark .input-field:focus {
+            box-shadow: 0 0 0 3px rgba(250, 250, 250, 0.1);
         }
         
         .muted {
             color: var(--muted-foreground);
+        }
+        
+        /* Header styles */
+        .header-bg {
+            background: linear-gradient(135deg, var(--card) 0%, var(--muted) 100%);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        /* Tab styles */
+        .tab-btn {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary);
+            border-radius: 2px;
+        }
+        
+        /* Dark mode toggle */
+        .theme-toggle {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background-color: var(--muted);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+        
+        .theme-toggle::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            background-color: var(--foreground);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .theme-toggle.dark::before {
+            transform: translateX(28px);
         }
     </style>
     <script>
@@ -186,7 +371,7 @@
         }
     </script>
 </head>
-<body class="min-h-screen bg-background">
+<body class="min-h-screen bg-background" id="mainBody">
     <!-- Login Form -->
     <div id="loginForm" class="min-h-screen flex items-center justify-center p-4">
         <div class="w-full max-w-md space-y-8">
@@ -200,7 +385,7 @@
                 <p class="text-muted-foreground mt-2">Enter your admin password to access the panel</p>
             </div>
             
-            <div class="card rounded-lg p-6">
+            <div class="login-container p-6">
                 <div class="space-y-4">
                     <div>
                         <label for="password" class="block text-sm font-medium text-foreground mb-2">Password</label>
@@ -213,8 +398,11 @@
                     </div>
                     <button 
                         onclick="login()" 
-                        class="btn-primary w-full py-2 px-4 rounded-md font-medium hover:opacity-90 transition-opacity"
+                        class="btn btn-primary w-full py-3 px-4 font-medium"
                     >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
                         Sign In
                     </button>
                     <div id="loginError" class="hidden bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm"></div>
@@ -226,131 +414,152 @@
     <!-- Admin Panel -->
     <div id="adminPanel" class="hidden min-h-screen">
         <!-- Header -->
-        <header class="bg-card border-b border-border">
+        <header class="header-bg">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-6">
-                    <div class="flex items-center space-x-4">
-                        <div class="h-8 w-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex justify-between items-center py-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="h-7 w-7 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
                         <div>
-                            <h1 class="text-xl font-bold text-foreground">API Key Rotator</h1>
-                            <p class="text-sm text-muted-foreground">Admin Panel</p>
+                            <h1 class="text-lg font-semibold text-foreground">API Key Rotator</h1>
+                            <p class="text-xs text-muted-foreground">Admin Dashboard</p>
                         </div>
                     </div>
-                    <button 
-                        onclick="logout()" 
-                        class="btn-destructive px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-                    >
-                        Sign Out
-                    </button>
+                    <div class="flex items-center space-x-3">
+                        <!-- Dark Mode Toggle -->
+                        <div class="flex items-center space-x-1.5">
+                            <svg class="w-3 h-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()"></div>
+                            <svg class="w-3 h-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        </div>
+                        <button 
+                            onclick="logout()" 
+                            class="btn btn-destructive px-3 py-1.5 text-xs font-medium"
+                        >
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Sign Out
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
 
         <!-- Navigation Tabs -->
-        <div class="bg-card border-b border-border">
+        <div class="header-bg border-b border-border">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <nav class="flex space-x-8">
+                <nav class="flex space-x-6">
                     <button 
                         onclick="showTab('environment')" 
-                        class="tab-btn py-4 px-1 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors active"
+                        class="tab-btn py-3 px-2 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors active flex items-center space-x-2"
                         data-tab="environment"
                     >
-                        API Keys
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                        <span class="text-sm">API Keys</span>
                     </button>
                     <button 
                         onclick="showTab('logs')" 
-                        class="tab-btn py-4 px-1 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                        class="tab-btn py-3 px-2 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors flex items-center space-x-2"
                         data-tab="logs"
                     >
-                        API Logs
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <span class="text-sm">API Logs</span>
                     </button>
                 </nav>
             </div>
         </div>
 
         <!-- Main Content -->
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <!-- Environment Tab -->
             <div id="environment" class="tab-content">
-                <div class="mb-6">
-                    <h2 class="text-2xl font-bold text-foreground">API Keys Management</h2>
-                    <p class="text-muted-foreground mt-1">Manage and test your API keys</p>
+                <div class="section-header">
+                    <h2 class="text-lg font-semibold text-foreground">API Keys Management</h2>
+                    <p class="text-muted-foreground text-xs mt-1">Manage and test your API keys</p>
                 </div>
 
-                <div class="space-y-6">
-                    <!-- Basic Configuration -->
-                    <div class="card rounded-lg p-6">
-                        <h3 class="text-lg font-semibold text-foreground mb-4">Basic Configuration</h3>
+                <!-- Basic Configuration -->
+                <div class="section">
+                    <h3 class="text-sm font-medium text-foreground mb-3 flex items-center">
+                        <span class="status-indicator bg-gray-500"></span>
+                        Basic Configuration
+                    </h3>
+                    <div class="space-y-3">
                         <div>
-                            <label class="block text-sm font-medium text-foreground mb-2">Base URL (Optional)</label>
+                            <label class="block text-xs font-medium text-muted-foreground mb-2">Base URL (Optional)</label>
                             <div class="flex items-center space-x-2">
                                 <input 
                                     type="text" 
                                     id="env_BASE_URL" 
-                                    class="input-field flex-1 px-3 py-2 rounded-md transition-colors" 
+                                    class="input-field flex-1 px-2 py-1.5 text-sm rounded transition-colors" 
                                     placeholder="https://api.example.com"
                                     oninput="handleInputChange('baseUrl', this.value)"
                                 >
                                 <button 
                                     id="saveBaseUrlBtn"
                                     onclick="saveBaseUrl()" 
-                                    class="btn-primary px-3 py-2 rounded-md text-sm font-medium transition-opacity flex items-center space-x-1 opacity-50 cursor-not-allowed"
+                                    class="btn btn-primary px-2 py-1.5 text-xs font-medium opacity-50 cursor-not-allowed"
                                     disabled
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
                                     <span>Save</span>
                                 </button>
                                 <button 
                                     onclick="showDeleteBaseUrlConfirm()" 
-                                    class="text-destructive hover:text-destructive/80 transition-colors p-2"
+                                    class="text-destructive hover:text-destructive/80 transition-colors p-1.5"
                                     title="Delete Base URL"
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>
                             </div>
-                            <p class="text-muted-foreground text-sm mt-2">Override the default API endpoints for both OpenAI and Gemini</p>
+                            <p class="text-muted-foreground text-xs mt-1">Override the default API endpoints for both OpenAI and Gemini</p>
                             <div id="baseUrlResult"></div>
                         </div>
                     </div>
+                </div>
 
+                <!-- API Keys List -->
+                <div class="space-y-4">
                     <!-- OpenAI API Keys -->
-                    <div class="card rounded-lg p-6">
-                        <h3 class="text-lg font-semibold text-foreground mb-4">OpenAI API Keys</h3>
-                        <div id="openaiKeysContainer" class="space-y-3"></div>
+                    <div class="section">
+                        <h3 class="text-sm font-medium text-foreground mb-3 flex items-center">
+                            <span class="status-indicator bg-green-500"></span>
+                            OpenAI API Keys
+                        </h3>
+                        <div id="openaiKeysContainer" class="space-y-2 mb-3"></div>
                         <!-- Add new OpenAI key input -->
-                        <div class="mt-4 p-3 bg-muted/30 rounded-md border-dashed border-2 border-border/50">
+                        <div class="border-dashed border border-border rounded p-3 bg-muted/30">
                             <div class="flex items-center space-x-2">
                                 <input 
                                     type="text" 
                                     id="newOpenaiKey" 
-                                    class="input-field flex-1 px-3 py-2 rounded-md transition-colors" 
+                                    class="input-field flex-1 px-2 py-1.5 text-sm rounded transition-colors" 
                                     placeholder="sk-..."
                                     onkeypress="handleAddKeyEnter(event, 'openai')"
                                 >
                                 <button 
                                     onclick="testNewApiKey('openai')" 
-                                    class="btn-secondary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                                    class="btn btn-secondary px-2 py-1.5 text-xs font-medium"
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
                                     <span>Test</span>
                                 </button>
                                 <button 
                                     onclick="addApiKey('openai')" 
-                                    class="btn-primary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                                    class="btn btn-primary px-2 py-1.5 text-xs font-medium"
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
                                     <span>Add</span>
                                 </button>
                             </div>
@@ -359,35 +568,32 @@
                     </div>
 
                     <!-- Gemini API Keys -->
-                    <div class="card rounded-lg p-6">
-                        <h3 class="text-lg font-semibold text-foreground mb-4">Gemini API Keys</h3>
-                        <div id="geminiKeysContainer" class="space-y-3"></div>
+                    <div class="section">
+                        <h3 class="text-sm font-medium text-foreground mb-3 flex items-center">
+                            <span class="status-indicator bg-blue-500"></span>
+                            Gemini API Keys
+                        </h3>
+                        <div id="geminiKeysContainer" class="space-y-2 mb-3"></div>
                         <!-- Add new Gemini key input -->
-                        <div class="mt-4 p-3 bg-muted/30 rounded-md border-dashed border-2 border-border/50">
+                        <div class="border-dashed border border-border rounded p-3 bg-muted/30">
                             <div class="flex items-center space-x-2">
                                 <input 
                                     type="text" 
                                     id="newGeminiKey" 
-                                    class="input-field flex-1 px-3 py-2 rounded-md transition-colors" 
+                                    class="input-field flex-1 px-2 py-1.5 text-sm rounded transition-colors" 
                                     placeholder="AIzaSy..."
                                     onkeypress="handleAddKeyEnter(event, 'gemini')"
                                 >
                                 <button 
                                     onclick="testNewApiKey('gemini')" 
-                                    class="btn-secondary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                                    class="btn btn-secondary px-2 py-1.5 text-xs font-medium"
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
                                     <span>Test</span>
                                 </button>
                                 <button 
                                     onclick="addApiKey('gemini')" 
-                                    class="btn-primary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                                    class="btn btn-primary px-2 py-1.5 text-xs font-medium"
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
                                     <span>Add</span>
                                 </button>
                             </div>
@@ -403,30 +609,38 @@
 
             <!-- Logs Tab -->
             <div id="logs" class="tab-content hidden">
-                <div class="mb-6">
-                    <h2 class="text-2xl font-bold text-foreground">API Request Logs</h2>
-                    <p class="text-muted-foreground mt-1">Monitor OpenAI and Gemini API requests and responses</p>
+                <div class="section-header">
+                    <h2 class="text-lg font-semibold text-foreground">API Request Logs</h2>
+                    <p class="text-muted-foreground text-xs mt-1">Monitor OpenAI and Gemini API requests and responses</p>
                 </div>
 
-                <div class="space-y-6">
-                    <!-- Logging Settings -->
-                    <div class="card rounded-lg p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold text-foreground">File Logging</h3>
+                <div class="space-y-4">
+                    <!-- File Logging Settings -->
+                    <div class="section">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-medium text-foreground flex items-center">
+                                <span class="status-indicator bg-orange-500"></span>
+                                File Logging
+                            </h3>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="loggingToggle" class="sr-only peer" onchange="toggleLogging()">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                             </label>
                         </div>
-                        <p class="text-muted-foreground text-sm">
+                        <p class="text-muted-foreground text-xs">
                             Enable file logging to save all LLM API requests to a log file. Only OpenAI and Gemini API calls are logged. Logs are also kept in memory (last 1000 entries).
                         </p>
                     </div>
 
                     <!-- Logs Display -->
-                    <div class="card rounded-lg p-6">
-                        <h3 class="text-lg font-semibold text-foreground mb-4">Recent API Requests</h3>
-                        <div id="logsContainer" class="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-sm h-96 overflow-y-auto whitespace-pre-wrap border"></div>
+                    <div class="section">
+                        <h3 class="text-sm font-medium text-foreground mb-3 flex items-center">
+                            <span class="status-indicator bg-yellow-500"></span>
+                            Recent API Requests
+                        </h3>
+                        <div class="bg-gray-900 border border-border rounded">
+                            <div id="logsContainer" class="text-green-400 p-3 font-mono text-xs h-80 overflow-y-auto whitespace-pre-wrap"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -435,7 +649,7 @@
 
     <!-- Confirmation Dialog -->
     <div id="confirmDialog" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="card rounded-lg p-6 max-w-md w-full">
+        <div class="bg-card border border-border rounded-lg p-6 max-w-md w-full shadow-xl">
             <div class="flex items-center space-x-3 mb-4">
                 <div class="h-10 w-10 bg-destructive/10 rounded-full flex items-center justify-center">
                     <svg class="w-5 h-5 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -451,13 +665,13 @@
             <div class="flex justify-end space-x-3">
                 <button 
                     onclick="cancelDelete()" 
-                    class="btn-secondary px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                    class="btn btn-secondary px-4 py-2 text-sm font-medium"
                 >
                     Cancel
                 </button>
                 <button 
                     onclick="confirmDelete()" 
-                    class="btn-destructive px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                    class="btn btn-destructive px-4 py-2 text-sm font-medium"
                 >
                     Delete
                 </button>
@@ -467,7 +681,7 @@
 
     <!-- Response Viewer Dialog -->
     <div id="responseDialog" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="card rounded-lg p-6 max-w-4xl w-full h-[80vh] flex flex-col">
+        <div class="bg-card border border-border rounded-lg p-6 max-w-4xl w-full h-[80vh] flex flex-col shadow-xl">
             <div class="flex items-center justify-between mb-4 flex-shrink-0">
                 <div>
                     <h3 class="text-lg font-semibold text-foreground">API Response</h3>
@@ -510,6 +724,37 @@
 
     <script>
         let envVars = {};
+        
+        // Dark mode functionality
+        function toggleTheme() {
+            const body = document.getElementById('mainBody');
+            const themeToggle = document.getElementById('themeToggle');
+            
+            if (body.classList.contains('dark')) {
+                body.classList.remove('dark');
+                themeToggle.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark');
+                themeToggle.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        
+        // Initialize theme from localStorage
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const body = document.getElementById('mainBody');
+            const themeToggle = document.getElementById('themeToggle');
+            
+            // Default to dark mode if no preference is saved
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                body.classList.add('dark');
+                if (themeToggle) {
+                    themeToggle.classList.add('dark');
+                }
+            }
+        }
         
         // Login functionality
         async function login() {
@@ -583,51 +828,42 @@
             openaiKeys.forEach((key, index) => {
                 if (key.trim()) {
                     const keyDiv = document.createElement('div');
-                    keyDiv.className = 'flex items-center space-x-2';
+                    keyDiv.className = 'key-row';
                     keyDiv.innerHTML = `
-                        <input 
-                            type="text" 
-                            value="${key.trim()}" 
-                            class="input-field flex-1 px-3 py-2 rounded-md transition-colors font-mono text-sm" 
-                            oninput="handleApiKeyChange('openai', ${index}, this.value)"
-                            data-original-value="${key.trim()}"
-                        >
-                        <button 
-                            id="saveOpenaiBtn-${index}"
-                            onclick="saveSpecificApiKey('openai', ${index})" 
-                            class="btn-primary px-3 py-2 rounded-md text-sm font-medium transition-opacity flex items-center space-x-1 opacity-50 cursor-not-allowed"
-                            disabled
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            <span>Save</span>
-                        </button>
-                        <button 
-                            onclick="testSpecificApiKey('openai', '${key.trim()}', ${index})" 
-                            class="btn-secondary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>Test</span>
-                        </button>
-                        <button 
-                            onclick="showDeleteConfirm('openai', ${index})" 
-                            class="text-destructive hover:text-destructive/80 transition-colors p-2"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                value="${key.trim()}" 
+                                class="input-field flex-1 px-2 py-1.5 rounded transition-colors font-mono text-sm" 
+                                oninput="handleApiKeyChange('openai', ${index}, this.value)"
+                                data-original-value="${key.trim()}"
+                            >
+                            <button 
+                                id="saveOpenaiBtn-${index}"
+                                onclick="saveSpecificApiKey('openai', ${index})" 
+                                class="btn btn-primary px-2 py-1.5 text-xs font-medium opacity-50 cursor-not-allowed"
+                                disabled
+                            >
+                                <span>Save</span>
+                            </button>
+                            <button 
+                                onclick="testSpecificApiKey('openai', '${key.trim()}', ${index})" 
+                                class="btn btn-secondary px-2 py-1.5 text-xs font-medium"
+                            >
+                                <span>Test</span>
+                            </button>
+                            <button 
+                                onclick="showDeleteConfirm('openai', ${index})" 
+                                class="text-destructive hover:text-destructive/80 transition-colors p-2"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="openai-test-result-${index}" class="mt-2"></div>
                     `;
                     openaiContainer.appendChild(keyDiv);
-                    
-                    // Add test result container
-                    const resultDiv = document.createElement('div');
-                    resultDiv.id = `openai-test-result-${index}`;
-                    resultDiv.className = 'ml-2';
-                    openaiContainer.appendChild(resultDiv);
                 }
             });
             
@@ -639,51 +875,42 @@
             geminiKeys.forEach((key, index) => {
                 if (key.trim()) {
                     const keyDiv = document.createElement('div');
-                    keyDiv.className = 'flex items-center space-x-2';
+                    keyDiv.className = 'key-row';
                     keyDiv.innerHTML = `
-                        <input 
-                            type="text" 
-                            value="${key.trim()}" 
-                            class="input-field flex-1 px-3 py-2 rounded-md transition-colors font-mono text-sm" 
-                            oninput="handleApiKeyChange('gemini', ${index}, this.value)"
-                            data-original-value="${key.trim()}"
-                        >
-                        <button 
-                            id="saveGeminiBtn-${index}"
-                            onclick="saveSpecificApiKey('gemini', ${index})" 
-                            class="btn-primary px-3 py-2 rounded-md text-sm font-medium transition-opacity flex items-center space-x-1 opacity-50 cursor-not-allowed"
-                            disabled
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            <span>Save</span>
-                        </button>
-                        <button 
-                            onclick="testSpecificApiKey('gemini', '${key.trim()}', ${index})" 
-                            class="btn-secondary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>Test</span>
-                        </button>
-                        <button 
-                            onclick="showDeleteConfirm('gemini', ${index})" 
-                            class="text-destructive hover:text-destructive/80 transition-colors p-2"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                value="${key.trim()}" 
+                                class="input-field flex-1 px-2 py-1.5 rounded transition-colors font-mono text-sm" 
+                                oninput="handleApiKeyChange('gemini', ${index}, this.value)"
+                                data-original-value="${key.trim()}"
+                            >
+                            <button 
+                                id="saveGeminiBtn-${index}"
+                                onclick="saveSpecificApiKey('gemini', ${index})" 
+                                class="btn btn-primary px-2 py-1.5 text-xs font-medium opacity-50 cursor-not-allowed"
+                                disabled
+                            >
+                                <span>Save</span>
+                            </button>
+                            <button 
+                                onclick="testSpecificApiKey('gemini', '${key.trim()}', ${index})" 
+                                class="btn btn-secondary px-2 py-1.5 text-xs font-medium"
+                            >
+                                <span>Test</span>
+                            </button>
+                            <button 
+                                onclick="showDeleteConfirm('gemini', ${index})" 
+                                class="text-destructive hover:text-destructive/80 transition-colors p-2"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="gemini-test-result-${index}" class="mt-2"></div>
                     `;
                     geminiContainer.appendChild(keyDiv);
-                    
-                    // Add test result container
-                    const resultDiv = document.createElement('div');
-                    resultDiv.id = `gemini-test-result-${index}`;
-                    resultDiv.className = 'ml-2';
-                    geminiContainer.appendChild(resultDiv);
                 }
             });
         }
@@ -1343,6 +1570,9 @@
         
         // Initialize active tab styling and check auth
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize theme
+            initializeTheme();
+            
             const activeTab = document.querySelector('.tab-btn.active');
             if (activeTab) {
                 activeTab.classList.add('text-foreground', 'border-primary');
