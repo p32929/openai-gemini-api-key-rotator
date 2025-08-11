@@ -16,6 +16,8 @@ function main() {
       const geminiKeyRotator = new KeyRotator(config.getGeminiApiKeys(), 'gemini');
       geminiClient = new GeminiClient(geminiKeyRotator, config.getGeminiBaseUrl());
       console.log('[INIT] Gemini client initialized');
+    } else if (config.hasAdminPassword()) {
+      console.log('[INIT] No Gemini keys found - can be configured via admin panel');
     }
     
     // Initialize OpenAI client if keys are available
@@ -23,6 +25,8 @@ function main() {
       const openaiKeyRotator = new KeyRotator(config.getOpenaiApiKeys(), 'openai');
       openaiClient = new OpenAIClient(openaiKeyRotator, config.getOpenaiBaseUrl());
       console.log('[INIT] OpenAI client initialized');
+    } else if (config.hasAdminPassword()) {
+      console.log('[INIT] No OpenAI keys found - can be configured via admin panel');
     }
     
     const server = new ProxyServer(config, geminiClient, openaiClient);

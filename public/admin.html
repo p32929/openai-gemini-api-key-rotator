@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Rotator - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+          --background: oklch(0.9900 0 0);
+          --foreground: oklch(0 0 0);
+          --card: oklch(1 0 0);
+          --card-foreground: oklch(0 0 0);
+          --popover: oklch(0.9900 0 0);
+          --popover-foreground: oklch(0 0 0);
+          --primary: oklch(0 0 0);
+          --primary-foreground: oklch(1 0 0);
+          --secondary: oklch(0.9400 0 0);
+          --secondary-foreground: oklch(0 0 0);
+          --muted: oklch(0.9700 0 0);
+          --muted-foreground: oklch(0.4400 0 0);
+          --accent: oklch(0.9400 0 0);
+          --accent-foreground: oklch(0 0 0);
+          --destructive: oklch(0.6300 0.1900 23.0300);
+          --destructive-foreground: oklch(1 0 0);
+          --border: oklch(0.9200 0 0);
+          --input: oklch(0.9400 0 0);
+          --ring: oklch(0 0 0);
+          --chart-1: oklch(0.8100 0.1700 75.3500);
+          --chart-2: oklch(0.5500 0.2200 264.5300);
+          --chart-3: oklch(0.7200 0 0);
+          --chart-4: oklch(0.9200 0 0);
+          --chart-5: oklch(0.5600 0 0);
+          --sidebar: oklch(0.9900 0 0);
+          --sidebar-foreground: oklch(0 0 0);
+          --sidebar-primary: oklch(0 0 0);
+          --sidebar-primary-foreground: oklch(1 0 0);
+          --sidebar-accent: oklch(0.9400 0 0);
+          --sidebar-accent-foreground: oklch(0 0 0);
+          --sidebar-border: oklch(0.9400 0 0);
+          --sidebar-ring: oklch(0 0 0);
+          --font-sans: Geist, sans-serif;
+          --font-serif: Georgia, serif;
+          --font-mono: Geist Mono, monospace;
+          --radius: 0.5rem;
+          --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+          --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+          --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+          --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+          --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+          --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+          --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+          --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+          --tracking-normal: 0em;
+          --spacing: 0.25rem;
+        }
+
+        .dark {
+          --background: oklch(0 0 0);
+          --foreground: oklch(1 0 0);
+          --card: oklch(0.1400 0 0);
+          --card-foreground: oklch(1 0 0);
+          --popover: oklch(0.1800 0 0);
+          --popover-foreground: oklch(1 0 0);
+          --primary: oklch(1 0 0);
+          --primary-foreground: oklch(0 0 0);
+          --secondary: oklch(0.2500 0 0);
+          --secondary-foreground: oklch(1 0 0);
+          --muted: oklch(0.2300 0 0);
+          --muted-foreground: oklch(0.7200 0 0);
+          --accent: oklch(0.3200 0 0);
+          --accent-foreground: oklch(1 0 0);
+          --destructive: oklch(0.6900 0.2000 23.9100);
+          --destructive-foreground: oklch(0 0 0);
+          --border: oklch(0.2600 0 0);
+          --input: oklch(0.3200 0 0);
+          --ring: oklch(0.7200 0 0);
+          --chart-1: oklch(0.8100 0.1700 75.3500);
+          --chart-2: oklch(0.5800 0.2100 260.8400);
+          --chart-3: oklch(0.5600 0 0);
+          --chart-4: oklch(0.4400 0 0);
+          --chart-5: oklch(0.9200 0 0);
+          --sidebar: oklch(0.1800 0 0);
+          --sidebar-foreground: oklch(1 0 0);
+          --sidebar-primary: oklch(1 0 0);
+          --sidebar-primary-foreground: oklch(0 0 0);
+          --sidebar-accent: oklch(0.3200 0 0);
+          --sidebar-accent-foreground: oklch(1 0 0);
+          --sidebar-border: oklch(0.3200 0 0);
+          --sidebar-ring: oklch(0.7200 0 0);
+          --font-sans: Geist, sans-serif;
+          --font-serif: Georgia, serif;
+          --font-mono: Geist Mono, monospace;
+          --radius: 0.5rem;
+          --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+          --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+          --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+          --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+          --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+          --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+          --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+          --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+        }
+        
+        body {
+            background-color: var(--background);
+            color: var(--foreground);
+            font-family: var(--font-sans);
+        }
+        
+        .card {
+            background-color: var(--card);
+            color: var(--card-foreground);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: var(--secondary-foreground);
+        }
+        
+        .btn-destructive {
+            background-color: var(--destructive);
+            color: var(--destructive-foreground);
+        }
+        
+        .input-field {
+            background-color: var(--input);
+            border: 1px solid var(--border);
+            color: var(--foreground);
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--ring);
+            box-shadow: 0 0 0 2px var(--ring);
+        }
+        
+        .muted {
+            color: var(--muted-foreground);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'var(--background)',
+                        foreground: 'var(--foreground)',
+                        card: 'var(--card)',
+                        'card-foreground': 'var(--card-foreground)',
+                        primary: 'var(--primary)',
+                        'primary-foreground': 'var(--primary-foreground)',
+                        secondary: 'var(--secondary)',
+                        'secondary-foreground': 'var(--secondary-foreground)',
+                        muted: 'var(--muted)',
+                        'muted-foreground': 'var(--muted-foreground)',
+                        destructive: 'var(--destructive)',
+                        'destructive-foreground': 'var(--destructive-foreground)',
+                        border: 'var(--border)',
+                        input: 'var(--input)',
+                        ring: 'var(--ring)',
+                    },
+                    fontFamily: {
+                        sans: 'var(--font-sans)',
+                        mono: 'var(--font-mono)',
+                    },
+                    borderRadius: {
+                        lg: 'var(--radius)',
+                        md: 'calc(var(--radius) - 2px)',
+                        sm: 'calc(var(--radius) - 4px)',
+                    },
+                    boxShadow: {
+                        sm: 'var(--shadow-sm)',
+                        md: 'var(--shadow-md)',
+                        lg: 'var(--shadow-lg)',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-background">
+    <!-- Login Form -->
+    <div id="loginForm" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md space-y-8">
+            <div class="text-center">
+                <div class="mx-auto h-12 w-12 flex items-center justify-center bg-primary text-primary-foreground rounded-lg mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-foreground">Admin Login</h1>
+                <p class="text-muted-foreground mt-2">Enter your admin password to access the panel</p>
+            </div>
+            
+            <div class="card rounded-lg p-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-foreground mb-2">Password</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            class="input-field w-full px-3 py-2 rounded-md transition-colors" 
+                            placeholder="Enter admin password"
+                        >
+                    </div>
+                    <button 
+                        onclick="login()" 
+                        class="btn-primary w-full py-2 px-4 rounded-md font-medium hover:opacity-90 transition-opacity"
+                    >
+                        Sign In
+                    </button>
+                    <div id="loginError" class="hidden bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="hidden min-h-screen">
+        <!-- Header -->
+        <header class="bg-card border-b border-border">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="h-8 w-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-foreground">API Key Rotator</h1>
+                            <p class="text-sm text-muted-foreground">Admin Panel</p>
+                        </div>
+                    </div>
+                    <button 
+                        onclick="logout()" 
+                        class="btn-destructive px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                    >
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="bg-card border-b border-border">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav class="flex space-x-8">
+                    <button 
+                        onclick="showTab('environment')" 
+                        class="tab-btn py-4 px-1 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors active"
+                        data-tab="environment"
+                    >
+                        API Keys
+                    </button>
+                    <button 
+                        onclick="showTab('logs')" 
+                        class="tab-btn py-4 px-1 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                        data-tab="logs"
+                    >
+                        Logs
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Environment Tab -->
+            <div id="environment" class="tab-content">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-foreground">API Keys Management</h2>
+                    <p class="text-muted-foreground mt-1">Manage and test your API keys</p>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Basic Configuration -->
+                    <div class="card rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">Basic Configuration</h3>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Base URL (Optional)</label>
+                            <div class="flex items-center space-x-2">
+                                <input 
+                                    type="text" 
+                                    id="env_BASE_URL" 
+                                    class="input-field flex-1 px-3 py-2 rounded-md transition-colors" 
+                                    placeholder="https://api.example.com"
+                                    oninput="handleInputChange('baseUrl', this.value)"
+                                >
+                                <button 
+                                    id="saveBaseUrlBtn"
+                                    onclick="saveBaseUrl()" 
+                                    class="btn-primary px-3 py-2 rounded-md text-sm font-medium transition-opacity flex items-center space-x-1 opacity-50 cursor-not-allowed"
+                                    disabled
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <span>Save</span>
+                                </button>
+                                <button 
+                                    onclick="showDeleteBaseUrlConfirm()" 
+                                    class="text-destructive hover:text-destructive/80 transition-colors p-2"
+                                    title="Delete Base URL"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <p class="text-muted-foreground text-sm mt-2">Override the default API endpoints for both OpenAI and Gemini</p>
+                            <div id="baseUrlResult"></div>
+                        </div>
+                    </div>
+
+                    <!-- OpenAI API Keys -->
+                    <div class="card rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">OpenAI API Keys</h3>
+                        <div id="openaiKeysContainer" class="space-y-3"></div>
+                        <!-- Add new OpenAI key input -->
+                        <div class="mt-4 p-3 bg-muted/30 rounded-md border-dashed border-2 border-border/50">
+                            <div class="flex items-center space-x-2">
+                                <input 
+                                    type="text" 
+                                    id="newOpenaiKey" 
+                                    class="input-field flex-1 px-3 py-2 rounded-md transition-colors" 
+                                    placeholder="sk-..."
+                                    onkeypress="handleAddKeyEnter(event, 'openai')"
+                                >
+                                <button 
+                                    onclick="testNewApiKey('openai')" 
+                                    class="btn-secondary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Test</span>
+                                </button>
+                                <button 
+                                    onclick="addApiKey('openai')" 
+                                    class="btn-primary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    <span>Add</span>
+                                </button>
+                            </div>
+                            <div id="newOpenaiKeyResult" class="mt-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Gemini API Keys -->
+                    <div class="card rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">Gemini API Keys</h3>
+                        <div id="geminiKeysContainer" class="space-y-3"></div>
+                        <!-- Add new Gemini key input -->
+                        <div class="mt-4 p-3 bg-muted/30 rounded-md border-dashed border-2 border-border/50">
+                            <div class="flex items-center space-x-2">
+                                <input 
+                                    type="text" 
+                                    id="newGeminiKey" 
+                                    class="input-field flex-1 px-3 py-2 rounded-md transition-colors" 
+                                    placeholder="AIzaSy..."
+                                    onkeypress="handleAddKeyEnter(event, 'gemini')"
+                                >
+                                <button 
+                                    onclick="testNewApiKey('gemini')" 
+                                    class="btn-secondary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Test</span>
+                                </button>
+                                <button 
+                                    onclick="addApiKey('gemini')" 
+                                    class="btn-primary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    <span>Add</span>
+                                </button>
+                            </div>
+                            <div id="newGeminiKeyResult" class="mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Messages -->
+                <div id="envSuccess" class="hidden bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md mt-4"></div>
+                <div id="envError" class="hidden bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md mt-4"></div>
+            </div>
+
+            <!-- Logs Tab -->
+            <div id="logs" class="tab-content hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-foreground">System Logs</h2>
+                    <p class="text-muted-foreground mt-1">Monitor proxy requests and system activity</p>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Logging Settings -->
+                    <div class="card rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-foreground">File Logging</h3>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="loggingToggle" class="sr-only peer" onchange="toggleLogging()">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <p class="text-muted-foreground text-sm">
+                            Enable file logging to save all proxy requests to a log file. Logs are also kept in memory (last 1000 entries).
+                        </p>
+                    </div>
+
+                    <!-- Logs Display -->
+                    <div class="card rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">Recent Logs</h3>
+                        <div id="logsContainer" class="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-sm h-96 overflow-y-auto whitespace-pre-wrap border"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Confirmation Dialog -->
+    <div id="confirmDialog" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="card rounded-lg p-6 max-w-md w-full">
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="h-10 w-10 bg-destructive/10 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-foreground">Delete API Key</h3>
+                    <p class="text-sm text-muted-foreground">This action cannot be undone</p>
+                </div>
+            </div>
+            <p class="text-foreground mb-6" id="confirmMessage">Are you sure you want to delete this API key?</p>
+            <div class="flex justify-end space-x-3">
+                <button 
+                    onclick="cancelDelete()" 
+                    class="btn-secondary px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                    Cancel
+                </button>
+                <button 
+                    onclick="confirmDelete()" 
+                    class="btn-destructive px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let envVars = {};
+        
+        // Login functionality
+        async function login() {
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            try {
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    loadEnvVars();
+                    loadLoggingStatus();
+                } else {
+                    errorDiv.textContent = 'Invalid password';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Login failed: ' + error.message;
+                errorDiv.classList.remove('hidden');
+            }
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/admin/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.log('Logout request failed, but continuing with local logout');
+            }
+            
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
+            document.getElementById('password').value = '';
+        }
+        
+        // Environment variables functionality
+        async function loadEnvVars() {
+            try {
+                const response = await fetch('/admin/api/env');
+                envVars = await response.json();
+                renderEnvVars();
+            } catch (error) {
+                showError('envError', 'Failed to load environment variables: ' + error.message);
+            }
+        }
+        
+        let originalValues = {};
+        
+        function renderEnvVars() {
+            // Load basic configuration
+            const baseUrlInput = document.getElementById('env_BASE_URL');
+            baseUrlInput.value = envVars.BASE_URL || '';
+            originalValues.baseUrl = baseUrlInput.value;
+            
+            // Load file logging status
+            document.getElementById('loggingToggle').checked = envVars.FILE_LOGGING === 'true';
+            
+            // Parse and display OpenAI keys
+            const openaiKeys = envVars.OPENAI_API_KEYS ? envVars.OPENAI_API_KEYS.split(',') : [];
+            const openaiContainer = document.getElementById('openaiKeysContainer');
+            openaiContainer.innerHTML = '';
+            
+            openaiKeys.forEach((key, index) => {
+                if (key.trim()) {
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = 'flex items-center space-x-2';
+                    keyDiv.innerHTML = `
+                        <input 
+                            type="text" 
+                            value="${key.trim()}" 
+                            class="input-field flex-1 px-3 py-2 rounded-md transition-colors font-mono text-sm" 
+                            oninput="handleApiKeyChange('openai', ${index}, this.value)"
+                            data-original-value="${key.trim()}"
+                        >
+                        <button 
+                            id="saveOpenaiBtn-${index}"
+                            onclick="saveSpecificApiKey('openai', ${index})" 
+                            class="btn-primary px-3 py-2 rounded-md text-sm font-medium transition-opacity flex items-center space-x-1 opacity-50 cursor-not-allowed"
+                            disabled
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <span>Save</span>
+                        </button>
+                        <button 
+                            onclick="testSpecificApiKey('openai', '${key.trim()}', ${index})" 
+                            class="btn-secondary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Test</span>
+                        </button>
+                        <button 
+                            onclick="showDeleteConfirm('openai', ${index})" 
+                            class="text-destructive hover:text-destructive/80 transition-colors p-2"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    `;
+                    openaiContainer.appendChild(keyDiv);
+                    
+                    // Add test result container
+                    const resultDiv = document.createElement('div');
+                    resultDiv.id = `openai-test-result-${index}`;
+                    resultDiv.className = 'ml-2';
+                    openaiContainer.appendChild(resultDiv);
+                }
+            });
+            
+            // Parse and display Gemini keys
+            const geminiKeys = envVars.GEMINI_API_KEYS ? envVars.GEMINI_API_KEYS.split(',') : [];
+            const geminiContainer = document.getElementById('geminiKeysContainer');
+            geminiContainer.innerHTML = '';
+            
+            geminiKeys.forEach((key, index) => {
+                if (key.trim()) {
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = 'flex items-center space-x-2';
+                    keyDiv.innerHTML = `
+                        <input 
+                            type="text" 
+                            value="${key.trim()}" 
+                            class="input-field flex-1 px-3 py-2 rounded-md transition-colors font-mono text-sm" 
+                            oninput="handleApiKeyChange('gemini', ${index}, this.value)"
+                            data-original-value="${key.trim()}"
+                        >
+                        <button 
+                            id="saveGeminiBtn-${index}"
+                            onclick="saveSpecificApiKey('gemini', ${index})" 
+                            class="btn-primary px-3 py-2 rounded-md text-sm font-medium transition-opacity flex items-center space-x-1 opacity-50 cursor-not-allowed"
+                            disabled
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <span>Save</span>
+                        </button>
+                        <button 
+                            onclick="testSpecificApiKey('gemini', '${key.trim()}', ${index})" 
+                            class="btn-secondary px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-1"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Test</span>
+                        </button>
+                        <button 
+                            onclick="showDeleteConfirm('gemini', ${index})" 
+                            class="text-destructive hover:text-destructive/80 transition-colors p-2"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    `;
+                    geminiContainer.appendChild(keyDiv);
+                    
+                    // Add test result container
+                    const resultDiv = document.createElement('div');
+                    resultDiv.id = `gemini-test-result-${index}`;
+                    resultDiv.className = 'ml-2';
+                    geminiContainer.appendChild(resultDiv);
+                }
+            });
+        }
+        
+        function updateEnvVar(key, value) {
+            envVars[key] = value;
+        }
+        
+        // Handle input changes and enable/disable save buttons
+        function handleInputChange(inputType, value) {
+            if (inputType === 'baseUrl') {
+                envVars.BASE_URL = value;
+                const saveBtn = document.getElementById('saveBaseUrlBtn');
+                const hasChanged = value !== originalValues.baseUrl;
+                
+                if (hasChanged) {
+                    saveBtn.disabled = false;
+                    saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    saveBtn.classList.add('hover:opacity-90');
+                } else {
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    saveBtn.classList.remove('hover:opacity-90');
+                }
+            }
+        }
+        
+        function handleApiKeyChange(apiType, index, value) {
+            updateApiKey(apiType, index, value);
+            const saveBtn = document.getElementById(`save${apiType.charAt(0).toUpperCase() + apiType.slice(1)}Btn-${index}`);
+            const input = event.target;
+            const originalValue = input.getAttribute('data-original-value');
+            const hasChanged = value !== originalValue;
+            
+            if (hasChanged) {
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                saveBtn.classList.add('hover:opacity-90');
+            } else {
+                saveBtn.disabled = true;
+                saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                saveBtn.classList.remove('hover:opacity-90');
+            }
+        }
+        
+        function updateApiKey(apiType, index, value) {
+            const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
+            const keys = envVars[keyName] ? envVars[keyName].split(',') : [];
+            keys[index] = value.trim();
+            envVars[keyName] = keys.filter(k => k.trim()).join(',');
+        }
+        
+        async function removeApiKey(apiType, index) {
+            const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
+            const keys = envVars[keyName] ? envVars[keyName].split(',') : [];
+            keys.splice(index, 1);
+            envVars[keyName] = keys.filter(k => k.trim()).join(',');
+            
+            // Save the changes to .env file
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+                
+                if (response.ok) {
+                    renderEnvVars();
+                } else {
+                    showError('envError', 'Failed to delete API key');
+                }
+            } catch (error) {
+                showError('envError', 'Delete failed: ' + error.message);
+            }
+        }
+        
+        // Confirmation dialog variables
+        let pendingDelete = null;
+        
+        function showDeleteConfirm(apiType, index) {
+            const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
+            const keys = envVars[keyName] ? envVars[keyName].split(',') : [];
+            const keyToDelete = keys[index];
+            
+            // Store the delete action for later
+            pendingDelete = { type: 'apiKey', apiType, index };
+            
+            // Update the confirmation message
+            const maskedKey = keyToDelete.length > 8 
+                ? keyToDelete.substring(0, 8) + '...' + keyToDelete.slice(-4)
+                : keyToDelete;
+            document.getElementById('confirmMessage').textContent = 
+                `Are you sure you want to delete this ${apiType.toUpperCase()} API key?\n\nKey: ${maskedKey}`;
+            
+            // Show dialog
+            document.getElementById('confirmDialog').classList.remove('hidden');
+        }
+        
+        function showDeleteBaseUrlConfirm() {
+            const currentBaseUrl = document.getElementById('env_BASE_URL').value || 'Not set';
+            
+            // Store the delete action for later
+            pendingDelete = { type: 'baseUrl' };
+            
+            // Update the confirmation message
+            document.getElementById('confirmMessage').textContent = 
+                `Are you sure you want to delete the Base URL from your configuration?\n\nCurrent value: ${currentBaseUrl}\n\nThis will remove BASE_URL from your .env file and revert to default API endpoints.`;
+            
+            // Show dialog
+            document.getElementById('confirmDialog').classList.remove('hidden');
+        }
+        
+        function cancelDelete() {
+            pendingDelete = null;
+            document.getElementById('confirmDialog').classList.add('hidden');
+        }
+        
+        function confirmDelete() {
+            if (pendingDelete) {
+                if (pendingDelete.type === 'apiKey') {
+                    removeApiKey(pendingDelete.apiType, pendingDelete.index);
+                } else if (pendingDelete.type === 'baseUrl') {
+                    deleteBaseUrl();
+                }
+                pendingDelete = null;
+            }
+            document.getElementById('confirmDialog').classList.add('hidden');
+        }
+        
+        async function addApiKey(apiType) {
+            const inputId = apiType === 'openai' ? 'newOpenaiKey' : 'newGeminiKey';
+            const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
+            const resultId = apiType === 'openai' ? 'newOpenaiKeyResult' : 'newGeminiKeyResult';
+            const newKey = document.getElementById(inputId).value.trim();
+            const resultDiv = document.getElementById(resultId);
+            
+            if (newKey) {
+                // Update the envVars object
+                const existingKeys = envVars[keyName] ? envVars[keyName].split(',') : [];
+                existingKeys.push(newKey);
+                envVars[keyName] = existingKeys.filter(k => k.trim()).join(',');
+                
+                // Save to .env file
+                try {
+                    const response = await fetch('/admin/api/env', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(envVars)
+                    });
+                    
+                    if (response.ok) {
+                        document.getElementById(inputId).value = '';
+                        renderEnvVars();
+                        
+                        // Show success message
+                        resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>API key added successfully!</span></div>';
+                        setTimeout(() => {
+                            resultDiv.innerHTML = '';
+                        }, 3000);
+                    } else {
+                        showError('envError', 'Failed to save API key to .env file');
+                        // Revert the change
+                        const revertedKeys = existingKeys.slice(0, -1);
+                        envVars[keyName] = revertedKeys.filter(k => k.trim()).join(',');
+                    }
+                } catch (error) {
+                    showError('envError', 'Failed to save API key: ' + error.message);
+                    // Revert the change
+                    const revertedKeys = existingKeys.slice(0, -1);
+                    envVars[keyName] = revertedKeys.filter(k => k.trim()).join(',');
+                }
+            }
+        }
+        
+        function handleAddKeyEnter(event, apiType) {
+            if (event.key === 'Enter') {
+                addApiKey(apiType);
+            }
+        }
+        
+        // Delete base URL
+        async function deleteBaseUrl() {
+            try {
+                // Remove BASE_URL from envVars
+                delete envVars.BASE_URL;
+                
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+                
+                if (response.ok) {
+                    // Clear the input field and reset original value
+                    document.getElementById('env_BASE_URL').value = '';
+                    originalValues.baseUrl = '';
+                    
+                    // Disable save button
+                    const saveBtn = document.getElementById('saveBaseUrlBtn');
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    saveBtn.classList.remove('hover:opacity-90');
+                    
+                    const resultDiv = document.getElementById('baseUrlResult');
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Base URL deleted from .env file!</span></div>';
+                    setTimeout(() => {
+                        resultDiv.innerHTML = '';
+                    }, 2000);
+                } else {
+                    showError('envError', 'Failed to delete base URL');
+                }
+            } catch (error) {
+                showError('envError', 'Delete failed: ' + error.message);
+            }
+        }
+        
+        // Save base URL
+        async function saveBaseUrl() {
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+                
+                if (response.ok) {
+                    // Update original value and disable save button
+                    originalValues.baseUrl = envVars.BASE_URL;
+                    const saveBtn = document.getElementById('saveBaseUrlBtn');
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    saveBtn.classList.remove('hover:opacity-90');
+                    
+                    const resultDiv = document.getElementById('baseUrlResult');
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Base URL saved!</span></div>';
+                    setTimeout(() => {
+                        resultDiv.innerHTML = '';
+                    }, 2000);
+                } else {
+                    showError('envError', 'Failed to save base URL');
+                }
+            } catch (error) {
+                showError('envError', 'Save failed: ' + error.message);
+            }
+        }
+        
+        // Save individual API key
+        async function saveSpecificApiKey(apiType, index) {
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+                
+                if (response.ok) {
+                    // Update original value and disable save button
+                    const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
+                    const keys = envVars[keyName] ? envVars[keyName].split(',') : [];
+                    const newValue = keys[index];
+                    
+                    // Find the input and update its original value
+                    const inputs = document.querySelectorAll(`#${apiType}KeysContainer input`);
+                    if (inputs[index]) {
+                        inputs[index].setAttribute('data-original-value', newValue);
+                    }
+                    
+                    // Disable save button
+                    const saveBtn = document.getElementById(`save${apiType.charAt(0).toUpperCase() + apiType.slice(1)}Btn-${index}`);
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    saveBtn.classList.remove('hover:opacity-90');
+                    
+                    // Show success feedback briefly
+                    const resultDiv = document.getElementById(`${apiType}-test-result-${index}`);
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Saved!</span></div>';
+                    setTimeout(() => {
+                        resultDiv.innerHTML = '';
+                    }, 2000);
+                } else {
+                    showError('envError', 'Failed to save API key');
+                }
+            } catch (error) {
+                showError('envError', 'Save failed: ' + error.message);
+            }
+        }
+        
+        // Test new API key before adding
+        async function testNewApiKey(apiType) {
+            const inputId = apiType === 'openai' ? 'newOpenaiKey' : 'newGeminiKey';
+            const resultId = apiType === 'openai' ? 'newOpenaiKeyResult' : 'newGeminiKeyResult';
+            const keyInput = document.getElementById(inputId);
+            const resultDiv = document.getElementById(resultId);
+            
+            const apiKey = keyInput.value.trim();
+            if (!apiKey) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Please enter an API key first</div>';
+                setTimeout(() => {
+                    resultDiv.innerHTML = '';
+                }, 3000);
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-md text-sm">Testing...</div>';
+            
+            try {
+                const response = await fetch('/admin/api/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        apiType: apiType, 
+                        apiKey: apiKey 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Valid! Ready to add.</span></div>';
+                } else {
+                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>Invalid key</span></div>`;
+                }
+                
+                // Clear result after 5 seconds
+                setTimeout(() => {
+                    resultDiv.innerHTML = '';
+                }, 5000);
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Test failed</div>`;
+                setTimeout(() => {
+                    resultDiv.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        // API Testing functionality for individual keys
+        async function testSpecificApiKey(apiType, apiKey, index) {
+            const resultDiv = document.getElementById(`${apiType}-test-result-${index}`);
+            
+            resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-md text-sm mt-2">Testing...</div>';
+            
+            try {
+                const response = await fetch('/admin/api/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        apiType: apiType, 
+                        apiKey: apiKey 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Valid!</span></div>';
+                } else {
+                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>Invalid</span></div>`;
+                }
+                
+                // Clear result after 3 seconds
+                setTimeout(() => {
+                    resultDiv.innerHTML = '';
+                }, 3000);
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm mt-2">Test failed</div>`;
+                setTimeout(() => {
+                    resultDiv.innerHTML = '';
+                }, 3000);
+            }
+        }
+        
+        async function saveEnvVars() {
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+                
+                if (response.ok) {
+                    showSuccess('envSuccess', 'Environment variables saved and configuration reloaded!');
+                } else {
+                    showError('envError', 'Failed to save environment variables');
+                }
+            } catch (error) {
+                showError('envError', 'Save failed: ' + error.message);
+            }
+        }
+        
+        // API Testing functionality
+        async function testApiKey(apiType) {
+            const keyInput = document.getElementById(`${apiType}TestKey`);
+            const resultDiv = document.getElementById(`${apiType}TestResult`);
+            
+            if (!keyInput.value.trim()) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm mt-3">Please enter an API key</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-md text-sm mt-3">Testing...</div>';
+            
+            try {
+                const response = await fetch('/admin/api/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        apiType: apiType, 
+                        apiKey: keyInput.value.trim() 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-3 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>API key is valid!</span></div>';
+                } else {
+                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm mt-3 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>${result.error}</span></div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm mt-3">Test failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Logging functionality
+        async function loadLoggingStatus() {
+            try {
+                const response = await fetch('/admin/api/logs');
+                const data = await response.json();
+                document.getElementById('loggingToggle').checked = data.fileLoggingEnabled;
+            } catch (error) {
+                console.error('Failed to load logging status:', error);
+            }
+        }
+        
+        async function toggleLogging() {
+            const enabled = document.getElementById('loggingToggle').checked;
+            
+            try {
+                // Update the environment variable
+                envVars.FILE_LOGGING = enabled ? 'true' : 'false';
+                
+                // Send to server
+                await fetch('/admin/api/logging', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+                
+                // Save the updated env vars
+                await saveEnvVars();
+            } catch (error) {
+                console.error('Failed to toggle logging:', error);
+                document.getElementById('loggingToggle').checked = !enabled;
+            }
+        }
+        
+        async function refreshLogs() {
+            try {
+                const response = await fetch('/admin/api/logs');
+                const data = await response.json();
+                
+                document.getElementById('logsContainer').textContent = data.logs.join('\n') || 'No logs available';
+                
+                // Auto-scroll to bottom
+                const container = document.getElementById('logsContainer');
+                container.scrollTop = container.scrollHeight;
+            } catch (error) {
+                document.getElementById('logsContainer').textContent = 'Failed to load logs: ' + error.message;
+            }
+        }
+        
+        // Load logs when logs tab is shown
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Remove active state from all tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('text-muted-foreground');
+                btn.classList.remove('text-foreground', 'border-primary');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.remove('hidden');
+            
+            // Set active state on clicked tab button
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.add('active', 'text-foreground', 'border-primary');
+            activeBtn.classList.remove('text-muted-foreground');
+            
+            // Load logs if logs tab is selected
+            if (tabName === 'logs') {
+                refreshLogs();
+            }
+        }
+        
+        // Utility functions
+        function showError(elementId, message) {
+            const errorDiv = document.getElementById(elementId);
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+        }
+        
+        function showSuccess(elementId, message) {
+            const successDiv = document.getElementById(elementId);
+            successDiv.textContent = message;
+            successDiv.classList.remove('hidden');
+            setTimeout(() => successDiv.classList.add('hidden'), 5000);
+        }
+        
+        // Event listeners
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+        
+        // Dialog keyboard handling
+        document.addEventListener('keydown', function(e) {
+            if (!document.getElementById('confirmDialog').classList.contains('hidden')) {
+                if (e.key === 'Escape') {
+                    cancelDelete();
+                } else if (e.key === 'Enter') {
+                    confirmDelete();
+                }
+            }
+        });
+        
+        // Check authentication on page load
+        async function checkAuth() {
+            try {
+                const response = await fetch('/admin/api/auth');
+                const data = await response.json();
+                
+                if (data.authenticated) {
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    loadEnvVars();
+                    loadLoggingStatus();
+                }
+            } catch (error) {
+                console.log('Auth check failed, showing login form');
+            }
+        }
+        
+        // Initialize active tab styling and check auth
+        document.addEventListener('DOMContentLoaded', function() {
+            const activeTab = document.querySelector('.tab-btn.active');
+            if (activeTab) {
+                activeTab.classList.add('text-foreground', 'border-primary');
+                activeTab.classList.remove('text-muted-foreground');
+            }
+            
+            // Check if user is already authenticated
+            checkAuth();
+        });
+    </script>
+</body>
+</html>

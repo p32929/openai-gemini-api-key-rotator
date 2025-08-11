@@ -29,8 +29,9 @@ class Config {
     this.port = parseInt(envVars.PORT);
     this.geminiApiKeys = this.parseApiKeys(envVars.GEMINI_API_KEYS);
     this.openaiApiKeys = this.parseApiKeys(envVars.OPENAI_API_KEYS);
-    this.baseUrl = envVars.BASE_URL || null;
-    this.openaiBaseUrl = envVars.OPENAI_BASE_URL || null;
+    this.baseUrl = (envVars.BASE_URL && envVars.BASE_URL.trim()) ? envVars.BASE_URL.trim() : null;
+    this.openaiBaseUrl = (envVars.OPENAI_BASE_URL && envVars.OPENAI_BASE_URL.trim()) ? envVars.OPENAI_BASE_URL.trim() : null;
+    this.adminPassword = envVars.ADMIN_PASSWORD || null;
 
     console.log(`[CONFIG] Port: ${this.port}`);
     if (this.baseUrl) {
@@ -42,9 +43,15 @@ class Config {
     }
     console.log(`[CONFIG] Found ${this.geminiApiKeys.length} Gemini API keys`);
     console.log(`[CONFIG] Found ${this.openaiApiKeys.length} OpenAI API keys`);
-
-    if (this.geminiApiKeys.length === 0 && this.openaiApiKeys.length === 0) {
-      throw new Error('At least one API key (GEMINI_API_KEYS or OPENAI_API_KEYS) must be provided in .env file');
+    
+    // Check if admin panel is configured
+    if (this.adminPassword) {
+      console.log(`[CONFIG] Admin panel enabled - API keys can be managed via admin interface`);
+    } else {
+      console.log(`[CONFIG] No admin password set - at least one API key must be provided in .env`);
+      if (this.geminiApiKeys.length === 0 && this.openaiApiKeys.length === 0) {
+        throw new Error('Either ADMIN_PASSWORD must be set (to enable admin panel) or at least one API key (GEMINI_API_KEYS or OPENAI_API_KEYS) must be provided in .env file');
+      }
     }
     
     this.geminiApiKeys.forEach((key, index) => {
@@ -123,6 +130,14 @@ class Config {
 
   hasOpenaiKeys() {
     return this.openaiApiKeys.length > 0;
+  }
+
+  getAdminPassword() {
+    return this.adminPassword;
+  }
+
+  hasAdminPassword() {
+    return this.adminPassword && this.adminPassword.length > 0;
   }
 
   maskApiKey(key) {
