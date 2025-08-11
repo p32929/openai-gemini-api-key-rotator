@@ -88,17 +88,10 @@
         .section {
             background-color: var(--card);
             color: var(--foreground);
-            border-left: 3px solid var(--primary);
+            border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 1rem;
             margin-bottom: 1rem;
-            box-shadow: var(--shadow-sm);
-            transition: all 0.3s ease;
-        }
-        
-        .section:hover {
-            box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
         }
         
         .section-header {
@@ -113,11 +106,6 @@
             border-radius: var(--radius);
             padding: 0.75rem;
             margin-bottom: 0.75rem;
-            transition: all 0.3s ease;
-        }
-        
-        .input-group:hover {
-            box-shadow: var(--shadow-sm);
         }
         
         .key-row {
@@ -126,53 +114,12 @@
             border-radius: var(--radius);
             padding: 0.75rem;
             margin-bottom: 0.5rem;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        
-        .key-row:hover {
-            border-color: var(--primary);
-            box-shadow: var(--shadow-sm);
-            transform: translateX(4px);
-        }
-        
-        .key-row::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background-color: var(--primary);
-            border-radius: var(--radius) 0 0 var(--radius);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .key-row:hover::before {
-            opacity: 1;
         }
         
         .login-container {
             background-color: var(--card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            box-shadow: var(--shadow-xl);
-            transition: all 0.3s ease;
-        }
-        
-        .status-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 0.5rem;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
         }
         
         .btn {
@@ -180,40 +127,19 @@
             border-radius: var(--radius);
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .btn:hover::before {
-            left: 100%;
         }
         
         .btn-primary {
             background-color: var(--primary);
             color: var(--primary-foreground);
-            box-shadow: var(--shadow-sm);
         }
         
         .btn-primary:hover {
-            background-color: var(--primary);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
+            opacity: 0.9;
         }
         
         .btn-secondary {
@@ -224,19 +150,15 @@
         
         .btn-secondary:hover {
             background-color: var(--accent);
-            box-shadow: var(--shadow-sm);
         }
         
         .btn-destructive {
             background-color: var(--destructive);
             color: var(--destructive-foreground);
-            box-shadow: var(--shadow-sm);
         }
         
         .btn-destructive:hover {
-            background-color: #dc2626;
-            box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
+            opacity: 0.9;
         }
         
         .btn-success {
@@ -259,19 +181,12 @@
             border: 1px solid var(--border);
             color: var(--foreground);
             border-radius: var(--radius);
-            transition: all 0.3s ease;
             font-family: inherit;
         }
         
         .input-field:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.1);
-            transform: translateY(-1px);
-        }
-        
-        .dark .input-field:focus {
-            box-shadow: 0 0 0 3px rgba(250, 250, 250, 0.1);
         }
         
         .muted {
@@ -280,15 +195,13 @@
         
         /* Header styles */
         .header-bg {
-            background: linear-gradient(135deg, var(--card) 0%, var(--muted) 100%);
-            backdrop-filter: blur(10px);
+            background-color: var(--card);
             border-bottom: 1px solid var(--border);
         }
         
         /* Tab styles */
         .tab-btn {
             position: relative;
-            transition: all 0.3s ease;
         }
         
         .tab-btn.active::after {
@@ -306,29 +219,28 @@
         /* Dark mode toggle */
         .theme-toggle {
             position: relative;
-            width: 60px;
-            height: 30px;
+            width: 50px;
+            height: 24px;
             background-color: var(--muted);
-            border-radius: 15px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.3s ease;
             border: 1px solid var(--border);
         }
         
         .theme-toggle::before {
             content: '';
             position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 22px;
-            height: 22px;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
             background-color: var(--foreground);
             border-radius: 50%;
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease;
         }
         
         .theme-toggle.dark::before {
-            transform: translateX(28px);
+            transform: translateX(24px);
         }
     </style>
     <script>
@@ -492,10 +404,7 @@
 
                 <!-- Basic Configuration -->
                 <div class="section">
-                    <h3 class="text-sm font-medium text-foreground mb-3 flex items-center">
-                        <span class="status-indicator bg-gray-500"></span>
-                        Basic Configuration
-                    </h3>
+                    <h3 class="text-sm font-medium text-foreground mb-3">Basic Configuration</h3>
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-medium text-muted-foreground mb-2">Base URL (Optional)</label>
@@ -535,10 +444,7 @@
                 <div class="space-y-4">
                     <!-- OpenAI API Keys -->
                     <div class="section">
-                        <h3 class="text-sm font-medium text-foreground mb-3 flex items-center">
-                            <span class="status-indicator bg-green-500"></span>
-                            OpenAI API Keys
-                        </h3>
+                        <h3 class="text-sm font-medium text-foreground mb-3">OpenAI API Keys</h3>
                         <div id="openaiKeysContainer" class="space-y-2 mb-3"></div>
                         <!-- Add new OpenAI key input -->
                         <div class="border-dashed border border-border rounded p-3 bg-muted/30">
@@ -569,10 +475,7 @@
 
                     <!-- Gemini API Keys -->
                     <div class="section">
-                        <h3 class="text-sm font-medium text-foreground mb-3 flex items-center">
-                            <span class="status-indicator bg-blue-500"></span>
-                            Gemini API Keys
-                        </h3>
+                        <h3 class="text-sm font-medium text-foreground mb-3">Gemini API Keys</h3>
                         <div id="geminiKeysContainer" class="space-y-2 mb-3"></div>
                         <!-- Add new Gemini key input -->
                         <div class="border-dashed border border-border rounded p-3 bg-muted/30">
@@ -618,10 +521,7 @@
                     <!-- File Logging Settings -->
                     <div class="section">
                         <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-sm font-medium text-foreground flex items-center">
-                                <span class="status-indicator bg-orange-500"></span>
-                                File Logging
-                            </h3>
+                            <h3 class="text-sm font-medium text-foreground">File Logging</h3>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="loggingToggle" class="sr-only peer" onchange="toggleLogging()">
                                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
@@ -634,10 +534,7 @@
 
                     <!-- Logs Display -->
                     <div class="section">
-                        <h3 class="text-sm font-medium text-foreground mb-3 flex items-center">
-                            <span class="status-indicator bg-yellow-500"></span>
-                            Recent API Requests
-                        </h3>
+                        <h3 class="text-sm font-medium text-foreground mb-3">Recent API Requests</h3>
                         <div class="bg-gray-900 border border-border rounded">
                             <div id="logsContainer" class="text-green-400 p-3 font-mono text-xs h-80 overflow-y-auto whitespace-pre-wrap"></div>
                         </div>
