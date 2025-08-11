@@ -266,7 +266,7 @@
                         class="tab-btn py-4 px-1 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors"
                         data-tab="logs"
                     >
-                        Logs
+                        API Logs
                     </button>
                 </nav>
             </div>
@@ -404,8 +404,8 @@
             <!-- Logs Tab -->
             <div id="logs" class="tab-content hidden">
                 <div class="mb-6">
-                    <h2 class="text-2xl font-bold text-foreground">System Logs</h2>
-                    <p class="text-muted-foreground mt-1">Monitor proxy requests and system activity</p>
+                    <h2 class="text-2xl font-bold text-foreground">API Request Logs</h2>
+                    <p class="text-muted-foreground mt-1">Monitor OpenAI and Gemini API requests and responses</p>
                 </div>
 
                 <div class="space-y-6">
@@ -419,13 +419,13 @@
                             </label>
                         </div>
                         <p class="text-muted-foreground text-sm">
-                            Enable file logging to save all proxy requests to a log file. Logs are also kept in memory (last 1000 entries).
+                            Enable file logging to save all LLM API requests to a log file. Only OpenAI and Gemini API calls are logged. Logs are also kept in memory (last 1000 entries).
                         </p>
                     </div>
 
                     <!-- Logs Display -->
                     <div class="card rounded-lg p-6">
-                        <h3 class="text-lg font-semibold text-foreground mb-4">Recent Logs</h3>
+                        <h3 class="text-lg font-semibold text-foreground mb-4">Recent API Requests</h3>
                         <div id="logsContainer" class="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-sm h-96 overflow-y-auto whitespace-pre-wrap border"></div>
                     </div>
                 </div>
@@ -461,6 +461,49 @@
                 >
                     Delete
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Response Viewer Dialog -->
+    <div id="responseDialog" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="card rounded-lg p-6 max-w-4xl w-full h-[80vh] flex flex-col">
+            <div class="flex items-center justify-between mb-4 flex-shrink-0">
+                <div>
+                    <h3 class="text-lg font-semibold text-foreground">API Response</h3>
+                    <p class="text-sm text-muted-foreground" id="responseInfo">Loading...</p>
+                </div>
+                <button 
+                    onclick="closeResponseDialog()" 
+                    class="text-muted-foreground hover:text-foreground transition-colors p-1"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Tabs for Request/Response -->
+            <div class="flex space-x-4 mb-4 flex-shrink-0" id="requestResponseTabs">
+                <button 
+                    id="responseTab"
+                    onclick="switchResponseTab('response')" 
+                    class="px-4 py-2 rounded-md text-sm font-medium btn-primary"
+                >
+                    Response
+                </button>
+                <button 
+                    id="requestTab"
+                    onclick="switchResponseTab('request')" 
+                    class="px-4 py-2 rounded-md text-sm font-medium btn-secondary hidden"
+                >
+                    Request Body
+                </button>
+            </div>
+            
+            <div class="flex-1 min-h-0">
+                <pre id="responseContent" class="bg-gray-900 text-green-400 p-4 rounded-md text-sm h-full overflow-auto font-mono whitespace-pre-wrap border"></pre>
+                <pre id="requestContent" class="bg-gray-900 text-yellow-400 p-4 rounded-md text-sm h-full overflow-auto font-mono whitespace-pre-wrap border hidden"></pre>
             </div>
         </div>
     </div>
@@ -1102,14 +1145,122 @@
                 const response = await fetch('/admin/api/logs');
                 const data = await response.json();
                 
-                document.getElementById('logsContainer').textContent = data.logs.join('\n') || 'No logs available';
+                const logsContainer = document.getElementById('logsContainer');
+                if (!data.logs || data.logs.length === 0) {
+                    logsContainer.textContent = 'No logs available';
+                    return;
+                }
+                
+                // Process logs to add view buttons for entries with stored data
+                const processedLogs = data.logs.map(log => {
+                    // Check if this is a TEST log entry
+                    const testMatch = log.match(/\[TEST-([a-zA-Z0-9]+)\]/);
+                    if (testMatch) {
+                        const testId = testMatch[1];
+                        return log + ` <button onclick="viewResponse('${testId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
+                    }
+                    
+                    // Check if this is a REQ log entry
+                    const reqMatch = log.match(/\[REQ-([a-zA-Z0-9]+)\]/);
+                    if (reqMatch) {
+                        const requestId = reqMatch[1];
+                        return log + ` <button onclick="viewResponse('${requestId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
+                    }
+                    
+                    return log;
+                }).join('\n');
+                
+                logsContainer.innerHTML = processedLogs || 'No logs available';
                 
                 // Auto-scroll to bottom
-                const container = document.getElementById('logsContainer');
-                container.scrollTop = container.scrollHeight;
+                logsContainer.scrollTop = logsContainer.scrollHeight;
             } catch (error) {
                 document.getElementById('logsContainer').textContent = 'Failed to load logs: ' + error.message;
             }
+        }
+
+        async function viewResponse(testId) {
+            try {
+                const response = await fetch(`/admin/api/response/${testId}`);
+                if (!response.ok) {
+                    alert('Response data not found');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                // Update dialog content
+                document.getElementById('responseInfo').textContent = 
+                    `${data.method} ${data.endpoint} (${data.apiType}) → ${data.status} ${data.statusText} | ${data.contentType}`;
+                
+                // Format JSON response
+                let formattedResponse;
+                try {
+                    const jsonData = JSON.parse(data.responseData);
+                    formattedResponse = JSON.stringify(jsonData, null, 2);
+                } catch (e) {
+                    // Not JSON, show as plain text
+                    formattedResponse = data.responseData;
+                }
+                
+                document.getElementById('responseContent').textContent = formattedResponse;
+                
+                // Handle request body tab
+                const requestTab = document.getElementById('requestTab');
+                const requestContent = document.getElementById('requestContent');
+                
+                if (data.requestBody && data.requestBody.trim()) {
+                    // Show request tab if there's a request body
+                    requestTab.classList.remove('hidden');
+                    
+                    // Format request body
+                    let formattedRequest;
+                    try {
+                        const requestJson = JSON.parse(data.requestBody);
+                        formattedRequest = JSON.stringify(requestJson, null, 2);
+                    } catch (e) {
+                        formattedRequest = data.requestBody;
+                    }
+                    
+                    requestContent.textContent = formattedRequest;
+                } else {
+                    // Hide request tab if no request body
+                    requestTab.classList.add('hidden');
+                }
+                
+                // Start with response tab active
+                switchResponseTab('response');
+                
+                // Show dialog
+                document.getElementById('responseDialog').classList.remove('hidden');
+            } catch (error) {
+                alert('Failed to load response: ' + error.message);
+            }
+        }
+
+        function switchResponseTab(tab) {
+            const responseTab = document.getElementById('responseTab');
+            const requestTab = document.getElementById('requestTab');
+            const responseContent = document.getElementById('responseContent');
+            const requestContent = document.getElementById('requestContent');
+            
+            if (tab === 'response') {
+                // Activate response tab
+                responseTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-primary';
+                requestTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-secondary';
+                responseContent.classList.remove('hidden');
+                requestContent.classList.add('hidden');
+            } else {
+                // Activate request tab
+                requestTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-primary';
+                responseTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-secondary';
+                requestContent.classList.remove('hidden');
+                responseContent.classList.add('hidden');
+            }
+        }
+
+        function closeResponseDialog() {
+            document.getElementById('responseDialog').classList.add('hidden');
         }
         
         // Load logs when logs tab is shown

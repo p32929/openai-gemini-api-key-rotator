@@ -13,6 +13,7 @@ class ProxyServer {
     this.adminSessionToken = null;
     this.fileLoggingEnabled = this.getFileLoggingStatus();
     this.logBuffer = [];
+    this.responseStorage = new Map(); // Store response data for viewing
   }
 
   start() {
@@ -44,7 +45,12 @@ class ProxyServer {
     const requestId = Math.random().toString(36).substring(2, 11);
     const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     
-    this.logRequest(`[REQ-${requestId}] ${req.method} ${req.url} from ${clientIp}`);
+    // Only log to file for API calls, always log to console
+    const isApiCall = this.parseRoute(req.url) !== null;
+    console.log(`[REQ-${requestId}] ${req.method} ${req.url} from ${clientIp}`);
+    if (isApiCall) {
+      this.logApiRequest(`[REQ-${requestId}] ${req.method} ${req.url} from ${clientIp}`);
+    }
     
     try {
       const body = await this.readRequestBody(req);
@@ -58,35 +64,46 @@ class ProxyServer {
       const routeInfo = this.parseRoute(req.url);
       
       if (!routeInfo) {
-        this.logRequest(`[REQ-${requestId}] Invalid path: ${req.url}`);
+        console.log(`[REQ-${requestId}] Invalid path: ${req.url}`);
+        console.log(`[REQ-${requestId}] Response: 400 Bad Request - Invalid API path`);
         this.sendError(res, 400, 'Invalid API path. Use /gemini/v1/* or /openai/v1/*');
         return;
       }
 
       const { apiType, path } = routeInfo;
-      this.logRequest(`[REQ-${requestId}] Proxying to ${apiType.toUpperCase()}: ${path}`);
+      console.log(`[REQ-${requestId}] Proxying to ${apiType.toUpperCase()}: ${path}`);
+      this.logApiRequest(`[REQ-${requestId}] Proxying to ${apiType.toUpperCase()}: ${path}`);
       
       const headers = this.extractRelevantHeaders(req.headers, apiType);
       let response;
       
       if (apiType === 'gemini') {
         if (!this.geminiClient) {
+          console.log(`[REQ-${requestId}] Response: 503 Service Unavailable - Gemini API not configured`);
+          this.logApiRequest(`[REQ-${requestId}] Response: 503 Service Unavailable - Gemini API not configured`);
           this.sendError(res, 503, 'Gemini API not configured');
           return;
         }
         response = await this.geminiClient.makeRequest(req.method, path, body, headers);
       } else if (apiType === 'openai') {
         if (!this.openaiClient) {
+          console.log(`[REQ-${requestId}] Response: 503 Service Unavailable - OpenAI API not configured`);
+          this.logApiRequest(`[REQ-${requestId}] Response: 503 Service Unavailable - OpenAI API not configured`);
           this.sendError(res, 503, 'OpenAI API not configured');
           return;
         }
         response = await this.openaiClient.makeRequest(req.method, path, body, headers);
       }
       
-      this.logRequest(`[REQ-${requestId}] Response: ${response.statusCode}`);
+      this.logApiResponse(requestId, response, body);
       this.sendResponse(res, response);
     } catch (error) {
-      this.logRequest(`[REQ-${requestId}] Request handling error: ${error.message}`);
+      console.log(`[REQ-${requestId}] Request handling error: ${error.message}`);
+      console.log(`[REQ-${requestId}] Response: 500 Internal Server Error`);
+      if (isApiCall) {
+        this.logApiRequest(`[REQ-${requestId}] Request handling error: ${error.message}`);
+        this.logApiRequest(`[REQ-${requestId}] Response: 500 Internal Server Error`);
+      }
       this.sendError(res, 500, 'Internal server error');
     }
   }
@@ -186,6 +203,73 @@ class ProxyServer {
     res.end(JSON.stringify(errorResponse));
   }
 
+  logApiResponse(requestId, response, requestBody = null) {
+    const contentLength = response.headers['content-length'] || (response.data ? response.data.length : 0);
+    const contentType = response.headers['content-type'] || 'unknown';
+    
+    // Store response data for viewing
+    this.storeResponseData(requestId, {
+      method: 'API_CALL',
+      endpoint: 'proxied_request',
+      apiType: 'LLM_API',
+      status: response.statusCode,
+      statusText: this.getStatusText(response.statusCode),
+      contentType: contentType,
+      responseData: response.data,
+      requestBody: requestBody
+    });
+    
+    // Log basic response info (both console and file)
+    const responseMsg = `[REQ-${requestId}] Response: ${response.statusCode} ${this.getStatusText(response.statusCode)}`;
+    const contentMsg = `[REQ-${requestId}] Content-Type: ${contentType}, Size: ${contentLength} bytes`;
+    
+    console.log(responseMsg);
+    console.log(contentMsg);
+    this.logApiRequest(responseMsg);
+    this.logApiRequest(contentMsg);
+    
+    // For error responses, log the error details
+    if (response.statusCode >= 400) {
+      try {
+        const errorData = JSON.parse(response.data);
+        if (errorData.error) {
+          const errorMsg = `[REQ-${requestId}] Error: ${errorData.error.message || errorData.error.code || 'Unknown error'}`;
+          console.log(errorMsg);
+          this.logApiRequest(errorMsg);
+        }
+      } catch (e) {
+        // If response is not JSON, log first 200 chars of response
+        const errorText = response.data ? response.data.toString().substring(0, 200) : 'No error details';
+        const errorMsg = `[REQ-${requestId}] Error details: ${errorText}`;
+        console.log(errorMsg);
+        this.logApiRequest(errorMsg);
+      }
+    }
+    
+    // For successful responses, log basic success info
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      const successMsg = `[REQ-${requestId}] Request completed successfully`;
+      console.log(successMsg);
+      this.logApiRequest(successMsg);
+    }
+  }
+
+  getStatusText(statusCode) {
+    const statusTexts = {
+      200: 'OK',
+      201: 'Created',
+      400: 'Bad Request',
+      401: 'Unauthorized',
+      403: 'Forbidden',
+      404: 'Not Found',
+      429: 'Too Many Requests',
+      500: 'Internal Server Error',
+      502: 'Bad Gateway',
+      503: 'Service Unavailable'
+    };
+    return statusTexts[statusCode] || 'Unknown Status';
+  }
+
   async handleAdminRequest(req, res, body) {
     const url = new URL(req.url, 'http://localhost');
     const path = url.pathname;
@@ -246,6 +330,8 @@ class ProxyServer {
       await this.handleGetLogs(res);
     } else if (path === '/admin/api/logging' && req.method === 'POST') {
       await this.handleToggleLogging(res, body);
+    } else if (path.startsWith('/admin/api/response/') && req.method === 'GET') {
+      await this.handleGetResponse(res, path);
     } else {
       this.sendError(res, 404, 'Not found');
     }
@@ -399,27 +485,82 @@ class ProxyServer {
   }
   
   async testGeminiKey(apiKey) {
+    const testId = Math.random().toString(36).substring(2, 11);
+    const url = `${this.config.getGeminiBaseUrl()}/v1/models?key=${apiKey}`;
+    
     try {
-      const testResponse = await fetch(`${this.config.getGeminiBaseUrl()}/v1/models?key=${apiKey}`);
+      const testResponse = await fetch(url);
+      const responseText = await testResponse.text();
+      const contentType = testResponse.headers.get('content-type') || 'unknown';
+      
+      // Single line log with compact info and response ID
+      const logMsg = `[TEST-${testId}] GET /v1/models (Gemini) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
+      
+      // Store response data for viewing
+      this.storeResponseData(testId, {
+        method: 'GET',
+        endpoint: '/v1/models',
+        apiType: 'Gemini',
+        status: testResponse.status,
+        statusText: testResponse.statusText,
+        contentType: contentType,
+        responseData: responseText,
+        requestBody: null // GET requests don't have body
+      });
+      
+      console.log(logMsg);
+      this.logApiRequest(logMsg);
+      
       return { 
         success: testResponse.ok, 
         error: testResponse.ok ? null : 'Invalid API key or network error' 
       };
     } catch (error) {
+      const logMsg = `[TEST-${testId}] GET /v1/models (Gemini) → ERROR: ${error.message}`;
+      console.log(logMsg);
+      this.logApiRequest(logMsg);
       return { success: false, error: error.message };
     }
   }
   
   async testOpenaiKey(apiKey) {
+    const testId = Math.random().toString(36).substring(2, 11);
+    const url = `${this.config.getOpenaiBaseUrl()}/v1/models`;
+    
     try {
-      const testResponse = await fetch(`${this.config.getOpenaiBaseUrl()}/v1/models`, {
+      const testResponse = await fetch(url, {
         headers: { 'Authorization': `Bearer ${apiKey}` }
       });
+      
+      const responseText = await testResponse.text();
+      const contentType = testResponse.headers.get('content-type') || 'unknown';
+      
+      // Single line log with compact info and response ID
+      const logMsg = `[TEST-${testId}] GET /v1/models (OpenAI) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
+      
+      // Store response data for viewing
+      this.storeResponseData(testId, {
+        method: 'GET',
+        endpoint: '/v1/models',
+        apiType: 'OpenAI',
+        status: testResponse.status,
+        statusText: testResponse.statusText,
+        contentType: contentType,
+        responseData: responseText,
+        requestBody: null // GET requests don't have body
+      });
+      
+      console.log(logMsg);
+      this.logApiRequest(logMsg);
+      
       return { 
         success: testResponse.ok, 
         error: testResponse.ok ? null : 'Invalid API key or network error' 
       };
     } catch (error) {
+      const logMsg = `[TEST-${testId}] GET /v1/models (OpenAI) → ERROR: ${error.message}`;
+      console.log(logMsg);
+      this.logApiRequest(logMsg);
       return { success: false, error: error.message };
     }
   }
@@ -444,9 +585,7 @@ class ProxyServer {
     }
   }
   
-  logRequest(message) {
-    console.log(message);
-    
+  logApiRequest(message) {
     if (this.fileLoggingEnabled) {
       const timestamp = new Date().toISOString();
       const logEntry = `${timestamp} ${message}`;
@@ -460,6 +599,32 @@ class ProxyServer {
       // Write to file
       const logPath = path.join(process.cwd(), 'proxy.log');
       fs.appendFileSync(logPath, logEntry + '\n');
+    }
+  }
+
+  storeResponseData(testId, responseData) {
+    // Store response data for viewing (keep last 100 responses)
+    this.responseStorage.set(testId, responseData);
+    if (this.responseStorage.size > 100) {
+      const firstKey = this.responseStorage.keys().next().value;
+      this.responseStorage.delete(firstKey);
+    }
+  }
+
+  async handleGetResponse(res, path) {
+    try {
+      const testId = path.split('/').pop(); // Extract testId from path
+      const responseData = this.responseStorage.get(testId);
+      
+      if (!responseData) {
+        this.sendError(res, 404, 'Response not found');
+        return;
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(responseData));
+    } catch (error) {
+      this.sendError(res, 500, 'Failed to get response data');
     }
   }
 
