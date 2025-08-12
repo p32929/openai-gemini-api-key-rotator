@@ -427,14 +427,17 @@
                                         type="text" 
                                         id="newProviderName" 
                                         class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors" 
-                                        placeholder="e.g., groq, together"
+                                        placeholder="e.g., groq, together (leave empty for default)"
+                                        oninput="updateProviderPreview()"
                                     >
+                                    <p class="text-muted-foreground text-xs mt-1">Leave empty for default provider, or provide both name and base URL for custom provider</p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-muted-foreground mb-2">API Type</label>
                                     <select 
                                         id="newProviderApiType" 
                                         class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors"
+                                        onchange="updateProviderPreview()"
                                     >
                                         <option value="openai">OpenAI Compatible</option>
                                         <option value="gemini">Gemini Compatible</option>
@@ -446,8 +449,10 @@
                                         type="text" 
                                         id="newProviderBaseUrl" 
                                         class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors" 
-                                        placeholder="https://api.example.com/v1"
+                                        placeholder="https://api.example.com/v1 (leave empty for default)"
+                                        oninput="updateProviderPreview()"
                                     >
+                                    <p class="text-muted-foreground text-xs mt-1">Leave empty for default URL, or provide both name and base URL for custom provider</p>
                                 </div>
                             </div>
                             <div>
@@ -486,10 +491,13 @@
                                         onclick="addNewProvider()" 
                                         class="btn btn-primary px-3 py-1.5 text-xs font-medium"
                                     >
-                                        Save Provider
+                                        Test & Save Provider
                                     </button>
                                 </div>
-                                <p class="text-muted-foreground text-xs mt-1">Add multiple API keys for automatic rotation</p>
+                                <p class="text-muted-foreground text-xs mt-1">Add multiple API keys for automatic rotation. All keys will be tested before saving.</p>
+                            </div>
+                            <div id="newProviderPreview" class="mt-3 p-3 bg-muted/20 border border-border rounded text-xs text-muted-foreground">
+                                <strong>Preview:</strong> <span id="previewText">Will create default OpenAI provider</span>
                             </div>
                             <div id="newProviderResult" class="mt-2"></div>
                         </div>
@@ -811,6 +819,8 @@
                 const response = await fetch('/admin/api/env');
                 envVars = await response.json();
                 renderEnvVars();
+                // Update provider preview when env vars are loaded
+                updateProviderPreview();
             } catch (error) {
                 showError('envError', 'Failed to load environment variables: ' + error.message);
             }
@@ -874,7 +884,7 @@
             // Display each provider
             Object.values(providers).forEach((provider, index) => {
                 const providerDiv = document.createElement('div');
-                providerDiv.className = 'key-row border-l-4 border-l-primary';
+                providerDiv.className = 'key-row';
                 providerDiv.innerHTML = `
                     <div class="space-y-3">
                         <div class="flex items-center justify-between">
@@ -946,7 +956,7 @@
                                         onclick="saveProviderKey('${provider.apiType}', '${provider.name}')" 
                                         class="btn btn-primary px-2 py-1 text-xs font-medium"
                                     >
-                                        Save
+                                        Test & Save
                                     </button>
                                 </div>
                                 <div id="newKeyResult_${provider.apiType}_${provider.name}" class="mt-2"></div>
@@ -993,11 +1003,73 @@
             document.getElementById('confirmDialog').classList.add('hidden');
         }
         
-        // New provider functions
-        async function addNewProvider() {
+        // Helper function to get default provider configuration
+        function getDefaultProviderConfig(apiType) {
+            const defaults = {
+                openai: {
+                    name: 'openai',
+                    baseUrl: 'https://api.openai.com/v1'
+                },
+                gemini: {
+                    name: 'gemini',
+                    baseUrl: 'https://generativelanguage.googleapis.com/v1'
+                }
+            };
+            return defaults[apiType] || null;
+        }
+
+        // Update the provider preview dynamically
+        function updateProviderPreview() {
             const name = document.getElementById('newProviderName').value.trim();
             const apiType = document.getElementById('newProviderApiType').value;
             const baseUrl = document.getElementById('newProviderBaseUrl').value.trim();
+            const previewElement = document.getElementById('previewText');
+            
+            if (!previewElement) return;
+            
+            const defaultConfig = getDefaultProviderConfig(apiType);
+            if (!defaultConfig) {
+                previewElement.textContent = 'Unknown API type';
+                return;
+            }
+            
+            const hasName = name.length > 0;
+            const hasBaseUrl = baseUrl.length > 0;
+            
+            // Check for validation errors
+            if (hasName && !hasBaseUrl) {
+                previewElement.innerHTML = `<span style="color: var(--destructive);">⚠️ <strong>Validation Error:</strong> Provider name provided but base URL is missing. Please provide both or leave both empty for default.</span>`;
+                previewElement.parentElement.style.borderColor = 'var(--destructive)';
+                previewElement.parentElement.style.backgroundColor = 'rgb(239 68 68 / 0.1)';
+                return;
+            }
+            
+            if (!hasName && hasBaseUrl) {
+                previewElement.innerHTML = `<span style="color: var(--destructive);">⚠️ <strong>Validation Error:</strong> Base URL provided but provider name is missing. Please provide both or leave both empty for default.</span>`;
+                previewElement.parentElement.style.borderColor = 'var(--destructive)';
+                previewElement.parentElement.style.backgroundColor = 'rgb(239 68 68 / 0.1)';
+                return;
+            }
+            
+            // Reset preview styling for valid inputs
+            previewElement.parentElement.style.borderColor = 'var(--border)';
+            previewElement.parentElement.style.backgroundColor = 'var(--muted)/20';
+            
+            // Valid combinations
+            if (!hasName && !hasBaseUrl) {
+                // Default provider
+                previewElement.innerHTML = `Will create <strong>default ${apiType.toUpperCase()}</strong> provider '<strong>${defaultConfig.name}</strong>' → <code>${defaultConfig.baseUrl}</code>`;
+            } else {
+                // Custom provider (both name and base URL provided)
+                previewElement.innerHTML = `Will create <strong>custom</strong> provider '<strong>${name}</strong>' → <code>${baseUrl}</code>`;
+            }
+        }
+
+        // New provider functions
+        async function addNewProvider() {
+            let name = document.getElementById('newProviderName').value.trim();
+            const apiType = document.getElementById('newProviderApiType').value;
+            let baseUrl = document.getElementById('newProviderBaseUrl').value.trim();
             const resultDiv = document.getElementById('newProviderResult');
             
             // Collect all API keys
@@ -1010,14 +1082,90 @@
                 }
             }
             
-            if (!name || apiKeys.length === 0) {
-                showWarningToast('Provider name and at least one API key are required');
+            if (apiKeys.length === 0) {
+                showWarningToast('At least one API key is required');
                 return;
+            }
+
+            // Validate that if either name or base URL is provided, both must be provided
+            const hasName = name.length > 0;
+            const hasBaseUrl = baseUrl.length > 0;
+            
+            if (hasName && !hasBaseUrl) {
+                showErrorToast('If you provide a provider name, you must also provide a base URL (or leave both empty for default)');
+                return;
+            }
+            
+            if (!hasName && hasBaseUrl) {
+                showErrorToast('If you provide a base URL, you must also provide a provider name (or leave both empty for default)');
+                return;
+            }
+
+            // Handle default provider creation
+            const isDefaultProvider = !hasName && !hasBaseUrl;
+            if (isDefaultProvider) {
+                const defaultConfig = getDefaultProviderConfig(apiType);
+                if (!defaultConfig) {
+                    showErrorToast('Unknown API type for default provider');
+                    return;
+                }
+                
+                name = defaultConfig.name;
+                baseUrl = defaultConfig.baseUrl;
+                
+                showInfoToast(`Creating default ${apiType.toUpperCase()} provider '${name}' with base URL: ${baseUrl}`);
+            } else {
+                showInfoToast(`Creating custom provider '${name}' with base URL: ${baseUrl}`);
             }
             
             // Validate provider name (alphanumeric and underscores only)
             if (!/^[a-zA-Z0-9_]+$/.test(name)) {
                 showErrorToast('Provider name can only contain letters, numbers, and underscores');
+                return;
+            }
+
+            // Test all API keys before saving
+            showInfoToast('Testing all API keys before saving...');
+            let allKeysValid = true;
+            const testedKeys = [];
+            
+            for (let i = 0; i < apiKeys.length; i++) {
+                const apiKey = apiKeys[i];
+                const maskedKey = apiKey.length > 16 ? apiKey.substring(0, 8) + '...' + apiKey.slice(-4) : apiKey;
+                
+                try {
+                    showInfoToast(`Testing API key ${i + 1}/${apiKeys.length}: ${maskedKey}...`);
+                    const response = await fetch('/admin/api/test', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            apiType: apiType, 
+                            apiKey: apiKey,
+                            baseUrl: baseUrl 
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        testedKeys.push(apiKey);
+                        showSuccessToast(`✅ API key ${maskedKey} is valid`);
+                    } else {
+                        showErrorToast(`❌ API key ${maskedKey} failed: ${result.error || 'Unknown error'}`);
+                        allKeysValid = false;
+                    }
+                } catch (error) {
+                    showErrorToast(`❌ Failed to test API key ${maskedKey}: ${error.message}`);
+                    allKeysValid = false;
+                }
+            }
+
+            if (!allKeysValid) {
+                if (testedKeys.length > 0) {
+                    showWarningToast(`Only ${testedKeys.length}/${apiKeys.length} API keys are valid. Please fix invalid keys and try again.`);
+                } else {
+                    showErrorToast('No valid API keys found. Please check your keys and try again.');
+                }
                 return;
             }
             
@@ -1031,8 +1179,8 @@
                 return;
             }
             
-            // Update envVars
-            envVars[keysVar] = apiKeys.join(',');
+            // Update envVars with tested keys only
+            envVars[keysVar] = testedKeys.join(',');
             if (baseUrl) {
                 envVars[baseUrlVar] = baseUrl;
             }
@@ -1081,7 +1229,7 @@
                     
                     renderEnvVars();
                     
-                    showSuccessToast(`🎉 Provider '${name}' created successfully with ${apiKeys.length} API key${apiKeys.length > 1 ? 's' : ''}!`);
+                    showSuccessToast(`🎉 Provider '${name}' created successfully with ${testedKeys.length} tested and valid API key${testedKeys.length > 1 ? 's' : ''}!`);
                 } else {
                     // Revert changes
                     delete envVars[keysVar];
@@ -1320,7 +1468,41 @@
                 showWarningToast('Please enter an API key');
                 return;
             }
+
+            const maskedKey = newKey.length > 16 ? newKey.substring(0, 8) + '...' + newKey.slice(-4) : newKey;
             
+            // Get the base URL for this provider to use for testing
+            const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
+            const baseUrl = envVars[baseUrlVar] || '';
+            
+            // Test the API key before saving
+            showInfoToast(`Testing API key ${maskedKey} before saving...`);
+            
+            try {
+                const testResponse = await fetch('/admin/api/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        apiType: apiType, 
+                        apiKey: newKey,
+                        baseUrl: baseUrl 
+                    })
+                });
+                
+                const testResult = await testResponse.json();
+                
+                if (!testResult.success) {
+                    showErrorToast(`❌ API key ${maskedKey} is invalid: ${testResult.error || 'Unknown error'}`);
+                    return;
+                }
+                
+                showSuccessToast(`✅ API key ${maskedKey} is valid! Saving...`);
+            } catch (error) {
+                showErrorToast(`❌ Failed to test API key ${maskedKey}: ${error.message}`);
+                return;
+            }
+            
+            // If test passes, save the key
             const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
             const existingKeys = envVars[keysVar] ? envVars[keysVar].split(',') : [];
             existingKeys.push(newKey);
@@ -1337,8 +1519,7 @@
                     document.getElementById(inputId).value = '';
                     renderEnvVars();
                     
-                    const maskedKey = newKey.length > 16 ? newKey.substring(0, 8) + '...' + newKey.slice(-4) : newKey;
-                    showSuccessToast(`✅ API key ${maskedKey} added to provider '${providerName}'!`);
+                    showSuccessToast(`✅ Tested and valid API key ${maskedKey} added to provider '${providerName}'!`);
                 } else {
                     showErrorToast('Failed to save API key');
                     // Revert the change
@@ -1703,6 +1884,9 @@
                 activeTab.classList.add('text-foreground', 'border-primary');
                 activeTab.classList.remove('text-muted-foreground');
             }
+            
+            // Initialize provider preview
+            updateProviderPreview();
             
             // Check if user is already authenticated
             checkAuth();
