@@ -14,6 +14,11 @@ class ProxyServer {
     this.fileLoggingEnabled = this.getFileLoggingStatus();
     this.logBuffer = [];
     this.responseStorage = new Map(); // Store response data for viewing
+    
+    // Store required classes for reinitialization
+    this.KeyRotator = require('./keyRotator');
+    this.GeminiClient = require('./geminiClient');
+    this.OpenAIClient = require('./openaiClient');
   }
 
   start() {
@@ -457,6 +462,9 @@ class ProxyServer {
       // Reload configuration
       this.config.loadConfig();
       
+      // Reinitialize API clients with updated configuration
+      this.reinitializeClients();
+      
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     } catch (error) {
@@ -636,6 +644,34 @@ class ProxyServer {
       res.end(html);
     } catch (error) {
       this.sendError(res, 500, 'Admin panel not found');
+    }
+  }
+
+  /**
+   * Reinitialize API clients with updated configuration
+   * Called after environment variables are updated via admin panel
+   */
+  reinitializeClients() {
+    console.log('[SERVER] Reinitializing API clients with updated configuration...');
+    
+    // Reinitialize Gemini client if keys are available
+    if (this.config.hasGeminiKeys()) {
+      const geminiKeyRotator = new this.KeyRotator(this.config.getGeminiApiKeys(), 'gemini');
+      this.geminiClient = new this.GeminiClient(geminiKeyRotator, this.config.getGeminiBaseUrl());
+      console.log('[SERVER] Gemini client reinitialized');
+    } else {
+      this.geminiClient = null;
+      console.log('[SERVER] Gemini client disabled (no keys available)');
+    }
+    
+    // Reinitialize OpenAI client if keys are available
+    if (this.config.hasOpenaiKeys()) {
+      const openaiKeyRotator = new this.KeyRotator(this.config.getOpenaiApiKeys(), 'openai');
+      this.openaiClient = new this.OpenAIClient(openaiKeyRotator, this.config.getOpenaiBaseUrl());
+      console.log('[SERVER] OpenAI client reinitialized');
+    } else {
+      this.openaiClient = null;
+      console.log('[SERVER] OpenAI client disabled (no keys available)');
     }
   }
 
