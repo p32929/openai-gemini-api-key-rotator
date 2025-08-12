@@ -43,8 +43,11 @@ PORT=8990
 GEMINI_API_KEYS=AIzaSyABC123...,AIzaSyDEF456...,AIzaSyGHI789...
 OPENAI_API_KEYS=sk-proj-abc123...,sk-proj-def456...,sk-proj-ghi789...
 
-# Optional - Custom base URL for all API calls
+# Optional - Custom base URL for all API calls (overrides OPENAI_BASE_URL)
 # BASE_URL=https://your-custom-server.com
+
+# Optional - Custom base URL specifically for OpenAI-compatible APIs
+# OPENAI_BASE_URL=https://api.groq.com/openai
 
 # Optional - Admin panel password (enables web management interface)
 ADMIN_PASSWORD=your-secure-admin-password
@@ -396,9 +399,12 @@ curl -X POST "http://localhost:8990/openai/v1/audio/speech" \
 | `PORT` | ✅ Yes | Server port | `8990` |
 | `GEMINI_API_KEYS` | 🔶 Optional* | Comma-separated Gemini API keys | `AIza...,AIza...` |
 | `OPENAI_API_KEYS` | 🔶 Optional* | Comma-separated OpenAI API keys | `sk-proj-...,sk-proj-...` |
-| `BASE_URL` | ❌ No | Custom base URL for all APIs | `https://api.example.com` |
+| `BASE_URL` | ❌ No | Custom base URL for all APIs (overrides OPENAI_BASE_URL) | `https://api.example.com` |
+| `OPENAI_BASE_URL` | ❌ No | Custom base URL specifically for OpenAI-compatible APIs | `https://api.groq.com/openai` |
+| `ADMIN_PASSWORD` | ❌ No | Password for admin panel access (enables web management) | `your-secure-password` |
+| `FILE_LOGGING` | ❌ No | Enable file logging to proxy.log (true/false) | `true` |
 
-*At least one API key type is required
+*At least one API key type is required unless `ADMIN_PASSWORD` is set
 
 ### Popular API Provider Examples
 
