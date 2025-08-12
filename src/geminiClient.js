@@ -75,7 +75,17 @@ class GeminiClient {
 
   sendRequest(method, path, body, headers, apiKey) {
     return new Promise((resolve, reject) => {
-      const url = new URL(path, this.baseUrl);
+      // Construct full URL - handle cases where path might be empty or just "/"
+      let fullUrl;
+      if (!path || path === '/') {
+        fullUrl = this.baseUrl;
+      } else if (path.startsWith('/')) {
+        fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path.substring(1) : this.baseUrl + path;
+      } else {
+        fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path : this.baseUrl + '/' + path;
+      }
+      
+      const url = new URL(fullUrl);
       url.searchParams.append('key', apiKey);
       
       const options = {

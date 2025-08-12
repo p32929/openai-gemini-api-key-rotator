@@ -406,24 +406,24 @@ curl -X POST "http://localhost:8990/openai/v1/audio/speech" \
 
 ```env
 # OpenRouter (supports 100+ models including Claude, GPT-4, Llama, etc.)
-BASE_URL=https://openrouter.ai/api
+BASE_URL=https://openrouter.ai/api/v1
 OPENAI_API_KEYS=sk-or-v1-your-key-here
 
 # Groq (ultra-fast inference for Llama, Mixtral, Gemma models)
-BASE_URL=https://api.groq.com/openai
+BASE_URL=https://api.groq.com/openai/v1
 OPENAI_API_KEYS=gsk_your-groq-key-here
 
 # Together AI (open source models)
-BASE_URL=https://api.together.xyz
+BASE_URL=https://api.together.xyz/v1
 OPENAI_API_KEYS=your-together-key-here
 
 # Anthropic Claude (direct)
-BASE_URL=https://api.anthropic.com
+BASE_URL=https://api.anthropic.com/v1
 OPENAI_API_KEYS=sk-ant-your-key-here
 
 # Use custom proxy or local server
-BASE_URL=https://your-proxy-server.com
-# BASE_URL=http://localhost:8080
+BASE_URL=https://your-proxy-server.com/v1
+# BASE_URL=http://localhost:8080/v1
 
 # Use default endpoints (OpenAI official, Google Gemini)
 # BASE_URL=

@@ -137,9 +137,15 @@ class ProxyServer {
     if (path.startsWith('/gemini/')) {
       const geminiPath = path.substring(7); // Remove '/gemini'
       if (geminiPath.startsWith('/v1/') || geminiPath.startsWith('/v1beta/')) {
+        // Check if base URL already includes version path
+        const baseUrl = this.config.getGeminiBaseUrl();
+        const baseUrlHasVersion = baseUrl.endsWith('/v1') || baseUrl.endsWith('/v1beta') || 
+                                  baseUrl.includes('/v1/') || baseUrl.includes('/v1beta/');
+        
         return {
           apiType: 'gemini',
-          path: geminiPath + urlObj.search
+          // If base URL already has version, adjust path accordingly
+          path: baseUrlHasVersion ? this.adjustGeminiPath(geminiPath, baseUrl) + urlObj.search : geminiPath + urlObj.search
         };
       }
     }
@@ -148,14 +154,36 @@ class ProxyServer {
     if (path.startsWith('/openai/')) {
       const openaiPath = path.substring(7); // Remove '/openai'
       if (openaiPath.startsWith('/v1/')) {
+        // Check if base URL already includes /v1 path
+        const baseUrl = this.config.getOpenaiBaseUrl();
+        const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
+        
         return {
           apiType: 'openai',
-          path: openaiPath + urlObj.search
+          // If base URL already has /v1, remove it from the path to avoid duplication
+          path: baseUrlHasV1 ? openaiPath.substring(3) + urlObj.search : openaiPath + urlObj.search
         };
       }
     }
     
     return null;
+  }
+
+  adjustGeminiPath(geminiPath, baseUrl) {
+    // For Gemini, handle version path adjustments
+    if (baseUrl.endsWith('/v1') && geminiPath.startsWith('/v1/')) {
+      return geminiPath.substring(3); // Remove /v1 from path
+    }
+    if (baseUrl.endsWith('/v1beta') && geminiPath.startsWith('/v1beta/')) {
+      return geminiPath.substring(7); // Remove /v1beta from path
+    }
+    if (baseUrl.includes('/v1/') && geminiPath.startsWith('/v1/')) {
+      return geminiPath.substring(3); // Remove /v1 from path
+    }
+    if (baseUrl.includes('/v1beta/') && geminiPath.startsWith('/v1beta/')) {
+      return geminiPath.substring(7); // Remove /v1beta from path
+    }
+    return geminiPath; // No adjustment needed
   }
 
   extractRelevantHeaders(headers, apiType) {
@@ -494,7 +522,10 @@ class ProxyServer {
   
   async testGeminiKey(apiKey) {
     const testId = Math.random().toString(36).substring(2, 11);
-    const url = `${this.config.getGeminiBaseUrl()}/v1/models?key=${apiKey}`;
+    const baseUrl = this.config.getGeminiBaseUrl();
+    const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
+    const path = baseUrlHasV1 ? '/models' : '/v1/models';
+    const url = `${baseUrl}${baseUrl.endsWith('/') ? path.substring(1) : path}?key=${apiKey}`;
     
     try {
       const testResponse = await fetch(url);
@@ -533,7 +564,10 @@ class ProxyServer {
   
   async testOpenaiKey(apiKey) {
     const testId = Math.random().toString(36).substring(2, 11);
-    const url = `${this.config.getOpenaiBaseUrl()}/v1/models`;
+    const baseUrl = this.config.getOpenaiBaseUrl();
+    const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
+    const path = baseUrlHasV1 ? '/models' : '/v1/models';
+    const url = `${baseUrl}${baseUrl.endsWith('/') ? path.substring(1) : path}`;
     
     try {
       const testResponse = await fetch(url, {

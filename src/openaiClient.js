@@ -75,8 +75,16 @@ class OpenAIClient {
 
   sendRequest(method, path, body, headers, apiKey) {
     return new Promise((resolve, reject) => {
-      // Ensure proper URL construction by combining baseUrl + path
-      const fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path.substring(1) : this.baseUrl + path;
+      // Construct full URL - handle cases where path might be empty or just "/"
+      let fullUrl;
+      if (!path || path === '/') {
+        fullUrl = this.baseUrl;
+      } else if (path.startsWith('/')) {
+        fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path.substring(1) : this.baseUrl + path;
+      } else {
+        fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path : this.baseUrl + '/' + path;
+      }
+      
       const url = new URL(fullUrl);
       
       const options = {
