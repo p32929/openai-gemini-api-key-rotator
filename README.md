@@ -43,11 +43,8 @@ PORT=8990
 GEMINI_API_KEYS=AIzaSyABC123...,AIzaSyDEF456...,AIzaSyGHI789...
 OPENAI_API_KEYS=sk-proj-abc123...,sk-proj-def456...,sk-proj-ghi789...
 
-# Optional - Custom base URL for all API calls (overrides OPENAI_BASE_URL)
+# Optional - Custom base URL for all API calls (overrides default endpoints)
 # BASE_URL=https://your-custom-server.com
-
-# Optional - Custom base URL specifically for OpenAI-compatible APIs
-# OPENAI_BASE_URL=https://api.groq.com/openai
 
 # Optional - Admin panel password (enables web management interface)
 ADMIN_PASSWORD=your-secure-admin-password
@@ -399,8 +396,7 @@ curl -X POST "http://localhost:8990/openai/v1/audio/speech" \
 | `PORT` | ✅ Yes | Server port | `8990` |
 | `GEMINI_API_KEYS` | 🔶 Optional* | Comma-separated Gemini API keys | `AIza...,AIza...` |
 | `OPENAI_API_KEYS` | 🔶 Optional* | Comma-separated OpenAI API keys | `sk-proj-...,sk-proj-...` |
-| `BASE_URL` | ❌ No | Custom base URL for all APIs (overrides OPENAI_BASE_URL) | `https://api.example.com` |
-| `OPENAI_BASE_URL` | ❌ No | Custom base URL specifically for OpenAI-compatible APIs | `https://api.groq.com/openai` |
+| `BASE_URL` | ❌ No | Custom base URL for all APIs (overrides default endpoints) | `https://api.example.com` |
 | `ADMIN_PASSWORD` | ❌ No | Password for admin panel access (enables web management) | `your-secure-password` |
 | `FILE_LOGGING` | ❌ No | Enable file logging to proxy.log (true/false) | `true` |
 
@@ -410,27 +406,27 @@ curl -X POST "http://localhost:8990/openai/v1/audio/speech" \
 
 ```env
 # OpenRouter (supports 100+ models including Claude, GPT-4, Llama, etc.)
-OPENAI_BASE_URL=https://openrouter.ai/api
+BASE_URL=https://openrouter.ai/api
 OPENAI_API_KEYS=sk-or-v1-your-key-here
 
 # Groq (ultra-fast inference for Llama, Mixtral, Gemma models)
-OPENAI_BASE_URL=https://api.groq.com/openai
+BASE_URL=https://api.groq.com/openai
 OPENAI_API_KEYS=gsk_your-groq-key-here
 
 # Together AI (open source models)
-OPENAI_BASE_URL=https://api.together.xyz
+BASE_URL=https://api.together.xyz
 OPENAI_API_KEYS=your-together-key-here
 
 # Anthropic Claude (direct)
-OPENAI_BASE_URL=https://api.anthropic.com
+BASE_URL=https://api.anthropic.com
 OPENAI_API_KEYS=sk-ant-your-key-here
 
 # Use custom proxy or local server
-OPENAI_BASE_URL=https://your-proxy-server.com
-# OPENAI_BASE_URL=http://localhost:8080
+BASE_URL=https://your-proxy-server.com
+# BASE_URL=http://localhost:8080
 
-# Use default endpoints (OpenAI official)
-# OPENAI_BASE_URL=
+# Use default endpoints (OpenAI official, Google Gemini)
+# BASE_URL=
 ```
 
 ## 📊 Logging Output

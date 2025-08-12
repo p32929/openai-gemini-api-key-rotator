@@ -30,14 +30,11 @@ class Config {
     this.geminiApiKeys = this.parseApiKeys(envVars.GEMINI_API_KEYS);
     this.openaiApiKeys = this.parseApiKeys(envVars.OPENAI_API_KEYS);
     this.baseUrl = (envVars.BASE_URL && envVars.BASE_URL.trim()) ? envVars.BASE_URL.trim() : null;
-    this.openaiBaseUrl = (envVars.OPENAI_BASE_URL && envVars.OPENAI_BASE_URL.trim()) ? envVars.OPENAI_BASE_URL.trim() : null;
     this.adminPassword = envVars.ADMIN_PASSWORD || null;
 
     console.log(`[CONFIG] Port: ${this.port}`);
     if (this.baseUrl) {
       console.log(`[CONFIG] Custom Base URL: ${this.baseUrl}`);
-    } else if (this.openaiBaseUrl) {
-      console.log(`[CONFIG] Custom OpenAI Base URL: ${this.openaiBaseUrl}`);
     } else {
       console.log(`[CONFIG] Using default API endpoints`);
     }
@@ -121,7 +118,7 @@ class Config {
   }
 
   getOpenaiBaseUrl() {
-    return this.baseUrl || this.openaiBaseUrl || 'https://api.openai.com';
+    return this.baseUrl || 'https://api.openai.com';
   }
 
   hasGeminiKeys() {
