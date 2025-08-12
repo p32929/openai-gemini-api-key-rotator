@@ -611,8 +611,126 @@
         </div>
     </div>
 
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-md"></div>
+
     <script>
         let envVars = {};
+        
+        // Toast notification system
+        function showToast(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toastContainer');
+            const toastId = 'toast_' + Date.now();
+            
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `transform transition-all duration-300 ease-in-out translate-x-full opacity-0 max-w-md min-w-80 w-auto bg-card shadow-lg rounded-lg pointer-events-auto border border-border`;
+            
+            // Define toast styles and icons based on type
+            let bgColor, textColor, iconSvg;
+            switch (type) {
+                case 'success':
+                    bgColor = 'bg-green-50 dark:bg-green-900/20';
+                    textColor = 'text-green-800 dark:text-green-200';
+                    iconSvg = `<svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>`;
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-50 dark:bg-red-900/20';
+                    textColor = 'text-red-800 dark:text-red-200';
+                    iconSvg = `<svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>`;
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-50 dark:bg-yellow-900/20';
+                    textColor = 'text-yellow-800 dark:text-yellow-200';
+                    iconSvg = `<svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>`;
+                    break;
+                case 'info':
+                default:
+                    bgColor = 'bg-blue-50 dark:bg-blue-900/20';
+                    textColor = 'text-blue-800 dark:text-blue-200';
+                    iconSvg = `<svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>`;
+                    break;
+            }
+            
+            toast.innerHTML = `
+                <div class="flex p-4 ${bgColor} rounded-lg">
+                    <div class="flex-shrink-0">
+                        ${iconSvg}
+                    </div>
+                    <div class="ml-3 flex-1 min-w-0">
+                        <p class="text-sm font-medium ${textColor} break-words">
+                            ${message}
+                        </p>
+                    </div>
+                    <div class="ml-4 flex-shrink-0">
+                        <button 
+                            onclick="hideToast('${toastId}')"
+                            class="bg-transparent rounded-md inline-flex ${textColor} hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-offset-2 p-1"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+                toast.classList.add('translate-x-0', 'opacity-100');
+            }, 100);
+            
+            // Auto-hide after duration
+            if (duration > 0) {
+                setTimeout(() => {
+                    hideToast(toastId);
+                }, duration);
+            }
+            
+            return toastId;
+        }
+        
+        function hideToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }
+        
+        // Convenience functions
+        function showSuccessToast(message, duration = 4000) {
+            return showToast(message, 'success', duration);
+        }
+        
+        function showErrorToast(message, duration = 5000) {
+            return showToast(message, 'error', duration);
+        }
+        
+        function showWarningToast(message, duration = 4000) {
+            return showToast(message, 'warning', duration);
+        }
+        
+        function showInfoToast(message, duration = 4000) {
+            return showToast(message, 'info', duration);
+        }
         
         // Dark mode functionality
         function toggleTheme() {
@@ -893,15 +1011,13 @@
             }
             
             if (!name || apiKeys.length === 0) {
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Provider name and at least one API key are required</div>';
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                showWarningToast('Provider name and at least one API key are required');
                 return;
             }
             
             // Validate provider name (alphanumeric and underscores only)
             if (!/^[a-zA-Z0-9_]+$/.test(name)) {
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Provider name can only contain letters, numbers, and underscores</div>';
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                showErrorToast('Provider name can only contain letters, numbers, and underscores');
                 return;
             }
             
@@ -911,8 +1027,7 @@
             
             // Check if provider already exists
             if (envVars[keysVar]) {
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Provider with this name already exists</div>';
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                showErrorToast(`Provider '${name}' already exists`);
                 return;
             }
             
@@ -966,19 +1081,18 @@
                     
                     renderEnvVars();
                     
-                    resultDiv.innerHTML = `<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Provider added with ${apiKeys.length} API key${apiKeys.length > 1 ? 's' : ''}!</span></div>`;
-                    setTimeout(() => resultDiv.innerHTML = '', 3000);
+                    showSuccessToast(`🎉 Provider '${name}' created successfully with ${apiKeys.length} API key${apiKeys.length > 1 ? 's' : ''}!`);
                 } else {
                     // Revert changes
                     delete envVars[keysVar];
                     if (baseUrl) delete envVars[baseUrlVar];
-                    showError('envError', 'Failed to save provider');
+                    showErrorToast('Failed to save provider');
                 }
             } catch (error) {
                 // Revert changes
                 delete envVars[keysVar];
                 if (baseUrl) delete envVars[baseUrlVar];
-                showError('envError', 'Failed to save provider: ' + error.message);
+                showErrorToast(`Failed to save provider: ${error.message}`);
             }
         }
         
@@ -1045,27 +1159,12 @@
             const apiKey = keyInput.value.trim();
             
             if (!apiKey) {
-                // Create a temporary result div for this specific key
-                let resultDiv = keyInput.parentNode.querySelector('.test-result');
-                if (!resultDiv) {
-                    resultDiv = document.createElement('div');
-                    resultDiv.className = 'test-result mt-1';
-                    keyInput.parentNode.appendChild(resultDiv);
-                }
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-2 py-1 rounded text-xs">Please enter an API key to test</div>';
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                showWarningToast('Please enter an API key to test');
                 return;
             }
             
-            // Create a temporary result div for this specific key
-            let resultDiv = keyInput.parentNode.querySelector('.test-result');
-            if (!resultDiv) {
-                resultDiv = document.createElement('div');
-                resultDiv.className = 'test-result mt-1';
-                keyInput.parentNode.appendChild(resultDiv);
-            }
-            
-            resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-2 py-1 rounded text-xs">Testing...</div>';
+            const maskedKey = apiKey.length > 16 ? apiKey.substring(0, 8) + '...' + apiKey.slice(-4) : apiKey;
+            showInfoToast(`Testing new API key ${maskedKey}...`);
             
             try {
                 const response = await fetch('/admin/api/test', {
@@ -1081,15 +1180,12 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-2 py-1 rounded text-xs">✅ Valid</div>';
+                    showSuccessToast(`✅ API key ${maskedKey} is valid! Ready to save.`);
                 } else {
-                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-2 py-1 rounded text-xs">❌ ${result.error || 'Invalid'}</div>`;
+                    showErrorToast(`❌ API key ${maskedKey} is invalid: ${result.error || 'Unknown error'}`);
                 }
-                
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
             } catch (error) {
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-2 py-1 rounded text-xs">❌ Test failed</div>';
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                showErrorToast(`❌ API key test failed: ${error.message}`);
             }
         }
         
@@ -1126,11 +1222,12 @@
                 
                 if (response.ok) {
                     renderEnvVars();
+                    showSuccessToast(`🗑️ Provider '${providerName}' deleted successfully`);
                 } else {
-                    showError('envError', 'Failed to delete provider');
+                    showErrorToast('Failed to delete provider');
                 }
             } catch (error) {
-                showError('envError', 'Delete failed: ' + error.message);
+                showErrorToast(`Failed to delete provider: ${error.message}`);
             }
         }
         
@@ -1139,16 +1236,8 @@
             const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
             const baseUrl = envVars[baseUrlVar] || null;
             
-            // Create a temporary result div for this specific key
-            const keyRow = document.querySelector(`[onclick="testProviderKey('${apiType}', '${providerName}', '${apiKey}', ${keyIndex})"]`).closest('.flex');
-            let resultDiv = keyRow.querySelector('.test-result');
-            if (!resultDiv) {
-                resultDiv = document.createElement('div');
-                resultDiv.className = 'test-result mt-1 col-span-full';
-                keyRow.parentNode.insertBefore(resultDiv, keyRow.nextSibling);
-            }
-            
-            resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-2 py-1 rounded text-xs">Testing API key...</div>';
+            const maskedKey = apiKey.length > 16 ? apiKey.substring(0, 8) + '...' + apiKey.slice(-4) : apiKey;
+            showInfoToast(`Testing API key ${maskedKey}...`);
             
             try {
                 const response = await fetch('/admin/api/test', {
@@ -1164,15 +1253,12 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-2 py-1 rounded text-xs flex items-center space-x-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>API key is valid!</span></div>';
+                    showSuccessToast(`API key ${maskedKey} is valid!`);
                 } else {
-                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-2 py-1 rounded text-xs flex items-center space-x-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>${result.error || 'Invalid key'}</span></div>`;
+                    showErrorToast(`API key ${maskedKey} test failed: ${result.error || 'Invalid key'}`);
                 }
-                
-                setTimeout(() => resultDiv.innerHTML = '', 4000);
             } catch (error) {
-                resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-2 py-1 rounded text-xs flex items-center space-x-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>Test failed: ${error.message}</span></div>`;
-                setTimeout(() => resultDiv.innerHTML = '', 4000);
+                showErrorToast(`API key test failed: ${error.message}`);
             }
         }
         
@@ -1217,23 +1303,21 @@
                 
                 if (response.ok) {
                     renderEnvVars();
+                    showSuccessToast(`🗑️ API key deleted from provider '${providerName}'`);
                 } else {
-                    showError('envError', 'Failed to delete API key');
+                    showErrorToast('Failed to delete API key');
                 }
             } catch (error) {
-                showError('envError', 'Delete failed: ' + error.message);
+                showErrorToast(`Failed to delete API key: ${error.message}`);
             }
         }
         
         async function saveProviderKey(apiType, providerName) {
             const inputId = `newKey_${apiType}_${providerName}`;
-            const resultId = `newKeyResult_${apiType}_${providerName}`;
             const newKey = document.getElementById(inputId).value.trim();
-            const resultDiv = document.getElementById(resultId);
             
             if (!newKey) {
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Please enter an API key</div>';
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                showWarningToast('Please enter an API key');
                 return;
             }
             
@@ -1253,16 +1337,16 @@
                     document.getElementById(inputId).value = '';
                     renderEnvVars();
                     
-                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>API key saved!</span></div>';
-                    setTimeout(() => resultDiv.innerHTML = '', 3000);
+                    const maskedKey = newKey.length > 16 ? newKey.substring(0, 8) + '...' + newKey.slice(-4) : newKey;
+                    showSuccessToast(`✅ API key ${maskedKey} added to provider '${providerName}'!`);
                 } else {
-                    showError('envError', 'Failed to save API key');
+                    showErrorToast('Failed to save API key');
                     // Revert the change
                     const revertedKeys = existingKeys.slice(0, -1);
                     envVars[keysVar] = revertedKeys.filter(k => k.trim()).join(',');
                 }
             } catch (error) {
-                showError('envError', 'Failed to save API key: ' + error.message);
+                showErrorToast(`Failed to save API key: ${error.message}`);
                 // Revert the change
                 const revertedKeys = existingKeys.slice(0, -1);
                 envVars[keysVar] = revertedKeys.filter(k => k.trim()).join(',');
@@ -1271,13 +1355,10 @@
         
         async function testProviderNewKey(apiType, providerName) {
             const inputId = `newKey_${apiType}_${providerName}`;
-            const resultId = `newKeyResult_${apiType}_${providerName}`;
             const newKey = document.getElementById(inputId).value.trim();
-            const resultDiv = document.getElementById(resultId);
             
             if (!newKey) {
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Please enter an API key to test</div>';
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                showWarningToast('Please enter an API key to test');
                 return;
             }
             
@@ -1286,7 +1367,8 @@
             const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
             const baseUrl = envVars[baseUrlVar] || null;
             
-            resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-md text-sm">Testing...</div>';
+            const maskedKey = newKey.length > 16 ? newKey.substring(0, 8) + '...' + newKey.slice(-4) : newKey;
+            showInfoToast(`Testing API key ${maskedKey} for provider '${providerName}'...`);
             
             try {
                 const response = await fetch('/admin/api/test', {
@@ -1302,15 +1384,12 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Valid! Ready to add.</span></div>';
+                    showSuccessToast(`✅ API key ${maskedKey} is valid! Ready to add to provider '${providerName}'.`);
                 } else {
-                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>${result.error || 'Invalid key'}</span></div>`;
+                    showErrorToast(`❌ API key ${maskedKey} is invalid: ${result.error || 'Unknown error'}`);
                 }
-                
-                setTimeout(() => resultDiv.innerHTML = '', 5000);
             } catch (error) {
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Test failed</div>';
-                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                showErrorToast(`❌ API key test failed: ${error.message}`);
             }
         }
         
