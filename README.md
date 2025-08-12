@@ -24,11 +24,13 @@ A powerful Node.js proxy server that automatically rotates API keys across **mul
 - 📱 **Responsive Design**: Works perfectly on desktop and mobile devices
 
 ### ⚡ **Advanced Features**
-- 🔗 **Custom Provider Creation**: Add any OpenAI-compatible API provider
+- 🔗 **Smart Provider Creation**: Add any OpenAI-compatible API provider with intelligent validation
 - 🎮 **Interactive UI**: No more popup alerts - everything uses modern UI components
 - 📝 **Detailed Logging**: Track every request, rotation, and error with masked API keys
 - 🔄 **Hot Configuration**: Add/remove API keys without server restart
 - 🎯 **Load Balancing**: Automatic rotation across multiple keys per provider
+- 📋 **cURL Generation**: Auto-generate test commands with proper URLs and payloads
+- 🛡️ **Pre-validation**: All API keys tested before saving to prevent invalid configurations
 
 ## 🚀 Quick Start
 
@@ -135,21 +137,45 @@ The redesigned admin panel provides a beautiful, modern interface for managing y
 
 ### 🔑 **API Key Management**  
 - **➕ Multiple Key Addition**: Add multiple API keys when creating providers
-- **✅ Individual Key Testing**: Test each API key independently with real-time results
+- **✅ Test-Before-Save**: All API keys are automatically tested before being saved
+- **🔬 Individual Key Testing**: Test each API key independently with real-time results
 - **🗑️ Easy Deletion**: Remove keys with confirmation dialogs (not popup alerts)
 - **🔄 Hot Reload**: Add/remove keys without server restart
+- **📋 Copy cURL Commands**: One-click copy of ready-to-test cURL commands for each provider
 
 ### 🏭 **Provider Management**
-- **🆕 Create Providers**: Add unlimited providers (Groq, OpenRouter, Together AI, etc.)
-- **⚙️ Configure Endpoints**: Set custom base URLs for each provider  
-- **📊 Provider Overview**: See key count and status at a glance
+- **🆕 Smart Provider Creation**: Create default providers (leave fields empty) or custom providers (provide both name and URL)
+- **⚙️ Real-time Validation**: Smart validation with live preview of what will be created
+- **📊 Provider Overview**: See key count, status, and endpoints at a glance
 - **🗑️ Provider Deletion**: Remove entire providers with all their keys
+- **🎯 Default Provider Support**: Automatic configuration for OpenAI and Gemini default endpoints
 
 ### 📊 **Monitoring & Logs**
 - **📝 Real-time Logs**: View API request logs and response details
 - **🔍 Response Viewer**: Inspect detailed API responses
 - **🎛️ File Logging Control**: Enable/disable file logging for API requests
 - **🔒 Secure Authentication**: Password-protected access with session management
+
+### 🎯 **Enhanced Provider Creation**
+
+The admin panel now features intelligent provider creation with two modes:
+
+#### **Default Provider Mode** (Recommended for beginners)
+- Leave **Provider Name** and **Base URL** empty
+- Select API type (OpenAI Compatible or Gemini Compatible)
+- Add your API keys
+- System automatically configures default settings
+
+#### **Custom Provider Mode** (Advanced users)
+- Provide **both** Provider Name and Base URL (both required)
+- Perfect for custom API endpoints like Groq, OpenRouter, Together AI
+- Real-time validation prevents incomplete configurations
+
+#### **Smart Features**
+- **📋 Copy cURL**: Click to copy ready-to-test cURL commands for any provider
+- **🔬 Pre-validation**: All API keys are tested before saving
+- **🎯 Live Preview**: See exactly what will be created before saving
+- **⚠️ Smart Validation**: Prevents incomplete provider configurations
 
 ### Access
 
@@ -185,7 +211,64 @@ Each provider gets its own endpoint based on the provider name:
 | **Gemini Beta** | `/gemini/v1beta/*` | `/gemini/v1beta/models/gemini-pro:generateContent` |
 | **OpenAI** | `/openai/v1/*` | `/openai/v1/chat/completions` |
 
-## 📋 Copy-Paste Examples
+## 🧪 Easy Testing with Admin Panel
+
+### 📋 **Auto-Generated cURL Commands** (NEW!)
+
+The easiest way to test your providers is using the admin panel's **Copy cURL** feature:
+
+1. **Go to Admin Panel**: `http://localhost:8990/admin`
+2. **Find Your Provider**: In the "Configured Providers" section
+3. **Click "📋 Copy cURL"**: Next to any provider
+4. **Paste in Terminal**: Ready-to-run test command with proper URLs
+
+**Example Generated Commands:**
+
+#### For OpenAI-Compatible Providers (Groq, OpenRouter, etc.):
+```bash
+curl -X POST "http://localhost:8990/groq/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello! Please say hello back."
+      }
+    ],
+    "max_tokens": 50,
+    "temperature": 0.7
+  }'
+```
+
+#### For Gemini Providers:
+```bash
+curl -X POST "http://localhost:8990/gemini/v1/models/gemini-2.5-pro:generateContent" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "Hello! Please say hello back."
+          }
+        ]
+      }
+    ],
+    "generationConfig": {
+      "maxOutputTokens": 50,
+      "temperature": 0.7
+    }
+  }'
+```
+
+✨ **Features:**
+- **Smart URL Detection**: Automatically uses your current server URL
+- **Provider-Specific**: Correct endpoints and payloads for each API type
+- **Ready-to-Test**: Uses working models with simple "hello" test
+- **One-Click Copy**: Copies to clipboard with success notification
+
+## 📋 Manual Copy-Paste Examples
 
 ### 🚀 **Modern Multi-Provider Examples**
 
@@ -676,6 +759,23 @@ openai-gemini-api-key-rotator/
 ├── .env.example          # Environment template
 └── README.md             # This file
 ```
+
+---
+
+## 🆕 What's New in v3.0
+
+### **Enhanced Admin Panel**
+- **🎯 Smart Provider Creation**: Default and custom provider modes with intelligent validation
+- **📋 Auto-Generated cURL**: One-click copy of ready-to-test commands  
+- **🔬 Test-Before-Save**: All API keys validated before saving
+- **⚡ Real-time Preview**: Live preview of provider configuration
+- **🛡️ Smart Validation**: Prevents incomplete configurations
+
+### **Improved User Experience**  
+- **🍞 Better Notifications**: Professional toast notifications instead of alerts
+- **🎮 Interactive UI**: Modern components with smooth animations
+- **📱 Mobile Optimized**: Perfect experience on all devices
+- **🔄 Hot Reload**: No server restart needed for configuration changes
 
 ---
 
