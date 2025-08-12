@@ -1,20 +1,34 @@
-# 🔄 OpenAI Gemini API Key Rotator
+# 🔄 Multi-Provider API Key Rotator
 
-A robust Node.js proxy server that automatically rotates API keys for **Gemini** and **OpenAI** APIs when rate limits (429 errors) are encountered. Built with zero dependencies and comprehensive logging.
+A powerful Node.js proxy server that automatically rotates API keys across **multiple API providers** (OpenAI, Gemini, Groq, OpenRouter, and more) when rate limits are encountered. Features a modern admin interface, toast notifications, and support for unlimited providers with custom configurations.
 
 ## ✨ Features
 
+### 🚀 **Core Functionality**
 - 🔄 **Automatic Key Rotation**: Seamlessly switches to the next API key on 429 errors
-- 🎯 **Multi-API Support**: Works with both Gemini and OpenAI APIs simultaneously
-- 🔧 **Flexible Base URLs**: Use custom endpoints or default API servers
-- 📝 **Detailed Logging**: Track every request, rotation, and error with masked API keys
-- 🚀 **Zero Dependencies**: Pure Node.js with no external packages
+- 🏗️ **Multi-Provider Support**: Create unlimited providers (Groq, OpenRouter, Together AI, etc.)
+- 🎯 **Legacy API Support**: Backward compatible with Gemini and OpenAI endpoints
+- 🔧 **Flexible Base URLs**: Each provider can have custom endpoints
 - 📁 **File Upload Support**: Handles multipart/form-data and binary uploads
 - 🛡️ **Error Handling**: Proper error responses and graceful failures
-- 🎛️ **Admin Panel**: Web-based management interface with dark/light themes
-- 🔑 **Dynamic Key Management**: Add, remove, and test API keys through the admin panel
-- 📊 **Real-time Monitoring**: View API request logs and manage logging settings
-- 🔒 **Secure Authentication**: Password-protected admin access with session management
+- 🚀 **Zero Dependencies**: Pure Node.js with no external packages
+
+### 🎛️ **Modern Admin Interface**
+- 🌙 **Dark/Light Themes**: Toggle between beautiful theme modes
+- 🍞 **Toast Notifications**: Professional slide-in notifications for all actions
+- 🔑 **Multiple API Key Management**: Add, test, and delete multiple keys per provider
+- ✅ **Individual Key Testing**: Test each API key independently with real-time results
+- 🏭 **Provider Management**: Create, configure, and delete providers dynamically
+- 📊 **Real-time Monitoring**: View API request logs and response details
+- 🔒 **Secure Authentication**: Password-protected access with session management
+- 📱 **Responsive Design**: Works perfectly on desktop and mobile devices
+
+### ⚡ **Advanced Features**
+- 🔗 **Custom Provider Creation**: Add any OpenAI-compatible API provider
+- 🎮 **Interactive UI**: No more popup alerts - everything uses modern UI components
+- 📝 **Detailed Logging**: Track every request, rotation, and error with masked API keys
+- 🔄 **Hot Configuration**: Add/remove API keys without server restart
+- 🎯 **Load Balancing**: Automatic rotation across multiple keys per provider
 
 ## 🚀 Quick Start
 
@@ -33,23 +47,54 @@ Copy the example environment file and add your API keys:
 cp .env.example .env
 ```
 
-Edit `.env`:
+Edit `.env` with your configuration:
 
+### **🎯 Modern Provider Format (Recommended)**
+```env
+# Required
+PORT=8990
+ADMIN_PASSWORD=your-secure-admin-password
+
+# Create multiple providers with different APIs
+# Format: {API_TYPE}_{PROVIDER_NAME}_API_KEYS and {API_TYPE}_{PROVIDER_NAME}_BASE_URL
+
+# Groq Provider (OpenAI-compatible)
+OPENAI_GROQ_API_KEYS=gsk_key1...,gsk_key2...,gsk_key3...
+OPENAI_GROQ_BASE_URL=https://api.groq.com/openai/v1
+
+# OpenRouter Provider (OpenAI-compatible)  
+OPENAI_OPENROUTER_API_KEYS=sk-or-v1-key1...,sk-or-v1-key2...
+OPENAI_OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+# Together AI Provider (OpenAI-compatible)
+OPENAI_TOGETHER_API_KEYS=together_key1...,together_key2...
+OPENAI_TOGETHER_BASE_URL=https://api.together.xyz/v1
+
+# Official OpenAI Provider  
+OPENAI_API_KEYS=sk-proj-key1...,sk-proj-key2...
+OPENAI_BASE_URL=https://api.openai.com/v1
+
+# Official Gemini Provider
+GEMINI_API_KEYS=AIza_key1...,AIza_key2...
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1
+
+# Optional - Enable file logging for API requests
+FILE_LOGGING=true
+```
+
+### **🔄 Legacy Format (Still Supported)**
 ```env
 # Required
 PORT=8990
 
-# At least one of these is required
+# Legacy single-provider format (still works)
 GEMINI_API_KEYS=AIzaSyABC123...,AIzaSyDEF456...,AIzaSyGHI789...
 OPENAI_API_KEYS=sk-proj-abc123...,sk-proj-def456...,sk-proj-ghi789...
 
-# Optional - Custom base URL for all API calls (overrides default endpoints)
-# BASE_URL=https://your-custom-server.com
-
-# Optional - Admin panel password (enables web management interface)
+# Optional - Admin panel password (highly recommended)
 ADMIN_PASSWORD=your-secure-admin-password
 
-# Optional - Enable file logging for API requests
+# Optional - Enable file logging
 FILE_LOGGING=true
 ```
 
@@ -61,28 +106,50 @@ npm start
 
 You'll see output like:
 ```
+[CONFIG] Loading configuration from /path/to/.env
 [CONFIG] Port: 8990
-[CONFIG] Using default API endpoints
-[CONFIG] Found 3 Gemini API keys
-[CONFIG] Found 2 OpenAI API keys
-[GEMINI-ROTATOR] Initialized with 3 API keys
-[OPENAI-ROTATOR] Initialized with 2 API keys
+[CONFIG] Found 4 providers configured
+[CONFIG] Provider 'groq' (openai): 3 keys [gsk_...xyz] → https://api.groq.com/openai/v1
+[CONFIG] Provider 'openrouter' (openai): 2 keys [sk-or...abc] → https://openrouter.ai/api/v1
+[CONFIG] Provider 'together' (openai): 2 keys [together...def] → https://api.together.xyz/v1
+[CONFIG] Provider 'gemini' (gemini): 3 keys [AIza...ghi] → https://generativelanguage.googleapis.com/v1
+[CONFIG] Admin panel enabled - providers can be managed via admin interface
+
 Multi-API proxy server running on port 8990
-Available Gemini API keys: 3
-Gemini endpoints: /gemini/v1/* and /gemini/v1beta/*
-Available OpenAI API keys: 2
-OpenAI endpoints: /openai/v1/*
+Provider 'groq' (openai): /groq/v1/* → https://api.groq.com/openai/v1
+Provider 'openrouter' (openai): /openrouter/v1/* → https://openrouter.ai/api/v1  
+Provider 'together' (openai): /together/v1/* → https://api.together.xyz/v1
+Provider 'gemini' (gemini): /gemini/v1/* → https://generativelanguage.googleapis.com/v1
+Admin panel available at: http://localhost:8990/admin
 ```
 
-## 🎛️ Admin Panel
+## 🎛️ Modern Admin Panel
 
-The admin panel provides a web-based interface for managing your API key rotator with the following features:
+The redesigned admin panel provides a beautiful, modern interface for managing your multi-provider API key rotator:
 
-- **Dynamic Key Management**: Add, remove, and test API keys without restarting the server
-- **Log Viewing**: View API request logs and response details (manual refresh)
-- **Theme Support**: Toggle between dark and light modes
-- **Secure Authentication**: Password-protected access with session management
-- **File Logging Control**: Enable/disable file logging for API requests
+### 🎨 **User Interface**
+- **🍞 Toast Notifications**: Professional slide-in notifications for all actions (no more annoying popups!)
+- **🌙 Dark/Light Themes**: Toggle between beautiful theme modes
+- **📱 Responsive Design**: Works perfectly on desktop, tablet, and mobile
+- **🎮 Interactive UI**: Modern components with smooth animations
+
+### 🔑 **API Key Management**  
+- **➕ Multiple Key Addition**: Add multiple API keys when creating providers
+- **✅ Individual Key Testing**: Test each API key independently with real-time results
+- **🗑️ Easy Deletion**: Remove keys with confirmation dialogs (not popup alerts)
+- **🔄 Hot Reload**: Add/remove keys without server restart
+
+### 🏭 **Provider Management**
+- **🆕 Create Providers**: Add unlimited providers (Groq, OpenRouter, Together AI, etc.)
+- **⚙️ Configure Endpoints**: Set custom base URLs for each provider  
+- **📊 Provider Overview**: See key count and status at a glance
+- **🗑️ Provider Deletion**: Remove entire providers with all their keys
+
+### 📊 **Monitoring & Logs**
+- **📝 Real-time Logs**: View API request logs and response details
+- **🔍 Response Viewer**: Inspect detailed API responses
+- **🎛️ File Logging Control**: Enable/disable file logging for API requests
+- **🔒 Secure Authentication**: Password-protected access with session management
 
 ### Access
 
@@ -101,6 +168,17 @@ The admin panel provides a web-based interface for managing your API key rotator
 
 ## 🔗 API Endpoints
 
+### 🎯 **Modern Provider Format**
+Each provider gets its own endpoint based on the provider name:
+
+| Provider | Endpoint Pattern | Example Usage |
+|----------|------------------|---------------|
+| **Groq** | `/{provider}/v1/*` | `http://localhost:8990/groq/v1/chat/completions` |
+| **OpenRouter** | `/{provider}/v1/*` | `http://localhost:8990/openrouter/v1/chat/completions` |
+| **Together AI** | `/{provider}/v1/*` | `http://localhost:8990/together/v1/chat/completions` |
+| **Custom Provider** | `/{provider}/v1/*` | `http://localhost:8990/my_custom_api/v1/chat/completions` |
+
+### 🔄 **Legacy Endpoints (Still Supported)**
 | API | Endpoint Pattern | Example |
 |-----|------------------|---------|
 | **Gemini** | `/gemini/v1/*` | `/gemini/v1/models/gemini-pro:generateContent` |
@@ -108,6 +186,72 @@ The admin panel provides a web-based interface for managing your API key rotator
 | **OpenAI** | `/openai/v1/*` | `/openai/v1/chat/completions` |
 
 ## 📋 Copy-Paste Examples
+
+### 🚀 **Modern Multi-Provider Examples**
+
+#### 1. Groq API (Ultra-fast Llama, Mixtral models)
+```bash
+# Using your Groq provider
+curl -X POST "http://localhost:8990/groq/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "mixtral-8x7b-32768",
+    "messages": [
+      {
+        "role": "user", 
+        "content": "Explain quantum computing in simple terms"
+      }
+    ],
+    "max_tokens": 150,
+    "temperature": 0.7
+  }'
+```
+
+#### 2. OpenRouter API (100+ models including Claude, GPT-4)
+```bash
+# Using your OpenRouter provider  
+curl -X POST "http://localhost:8990/openrouter/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "anthropic/claude-3-haiku",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Write a haiku about API key rotation"
+      }
+    ]
+  }'
+```
+
+#### 3. Together AI (Open source models)
+```bash
+# Using your Together AI provider
+curl -X POST "http://localhost:8990/together/v1/chat/completions" \
+  -H "Content-Type: application/json" \  
+  -d '{
+    "model": "meta-llama/Llama-2-70b-chat-hf",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What are the benefits of load balancing API keys?"
+      }
+    ],
+    "max_tokens": 200
+  }'
+```
+
+#### 4. Multiple Provider Load Balancing
+```bash
+# The same request can hit different providers based on availability
+# Request 1 might go to Groq (if keys available)
+curl -X POST "http://localhost:8990/groq/v1/chat/completions" -H "Content-Type: application/json" -d '{"model":"mixtral-8x7b-32768","messages":[{"role":"user","content":"Hello"}]}'
+
+# Request 2 might go to OpenRouter (if Groq is rate limited)  
+curl -X POST "http://localhost:8990/openrouter/v1/chat/completions" -H "Content-Type: application/json" -d '{"model":"anthropic/claude-3-haiku","messages":[{"role":"user","content":"Hello"}]}'
+
+# Request 3 might go to Together AI (as backup)
+curl -X POST "http://localhost:8990/together/v1/chat/completions" -H "Content-Type: application/json" -d '{"model":"meta-llama/Llama-2-70b-chat-hf","messages":[{"role":"user","content":"Hello"}]}'
+```
 
 ### Gemini API Examples
 
@@ -394,39 +538,84 @@ curl -X POST "http://localhost:8990/openai/v1/audio/speech" \
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
 | `PORT` | ✅ Yes | Server port | `8990` |
-| `GEMINI_API_KEYS` | 🔶 Optional* | Comma-separated Gemini API keys | `AIza...,AIza...` |
-| `OPENAI_API_KEYS` | 🔶 Optional* | Comma-separated OpenAI API keys | `sk-proj-...,sk-proj-...` |
-| `BASE_URL` | ❌ No | Custom base URL for all APIs (overrides default endpoints) | `https://api.example.com` |
-| `ADMIN_PASSWORD` | ❌ No | Password for admin panel access (enables web management) | `your-secure-password` |
+| `ADMIN_PASSWORD` | 🎯 Highly Recommended | Password for admin panel (enables web management) | `your-secure-password` |
 | `FILE_LOGGING` | ❌ No | Enable file logging to proxy.log (true/false) | `true` |
 
-*At least one API key type is required unless `ADMIN_PASSWORD` is set
+### 🎯 **Modern Provider Format**
+| Variable Pattern | Description | Example |
+|------------------|-------------|---------|
+| `{API_TYPE}_{PROVIDER}_API_KEYS` | Comma-separated API keys for custom provider | `OPENAI_GROQ_API_KEYS=gsk_key1,gsk_key2` |
+| `{API_TYPE}_{PROVIDER}_BASE_URL` | Custom base URL for custom provider | `OPENAI_GROQ_BASE_URL=https://api.groq.com/openai/v1` |
+| `{API_TYPE}_API_KEYS` | Comma-separated API keys for default provider | `OPENAI_API_KEYS=sk_key1,sk_key2` |
+| `{API_TYPE}_BASE_URL` | Custom base URL for default provider | `OPENAI_BASE_URL=https://api.openai.com/v1` |
 
-### Popular API Provider Examples
+**Supported API Types:**
+- `OPENAI` - For OpenAI-compatible APIs (most modern APIs)
+- `GEMINI` - For Google Gemini API
 
+**How it works:**
+- `OPENAI_GROQ_API_KEYS` → Creates "groq" provider  
+- `OPENAI_API_KEYS` → Creates "openai" provider (default)
+- `GEMINI_API_KEYS` → Creates "gemini" provider (default)
+
+### 🔄 **Legacy Variables (Still Supported)**
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `GEMINI_API_KEYS` | 🔶 Optional* | Comma-separated Gemini API keys | `AIza...,AIza...` |
+| `OPENAI_API_KEYS` | 🔶 Optional* | Comma-separated OpenAI API keys | `sk-proj-...,sk-proj-...` |
+| `BASE_URL` | ❌ No | Custom base URL for all APIs (legacy, overrides default endpoints) | `https://api.example.com` |
+
+*At least one API key type is required unless `ADMIN_PASSWORD` is set (to use admin panel for configuration)
+
+### 🚀 **Popular API Provider Examples**
+
+#### **Modern Multi-Provider Setup (Recommended)**
 ```env
-# OpenRouter (supports 100+ models including Claude, GPT-4, Llama, etc.)
+PORT=8990
+ADMIN_PASSWORD=secure-password-123
+
+# Multiple providers for better reliability and load balancing
+
+# Groq - Ultra-fast inference (Llama, Mixtral, Gemma)
+OPENAI_GROQ_API_KEYS=gsk_key1,gsk_key2,gsk_key3
+OPENAI_GROQ_BASE_URL=https://api.groq.com/openai/v1
+
+# OpenRouter - 100+ models (Claude, GPT-4, Llama, etc.)
+OPENAI_OPENROUTER_API_KEYS=sk-or-v1-key1,sk-or-v1-key2
+OPENAI_OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+# Together AI - Open source models
+OPENAI_TOGETHER_API_KEYS=together_key1,together_key2
+OPENAI_TOGETHER_BASE_URL=https://api.together.xyz/v1
+
+# Official OpenAI - GPT models
+OPENAI_API_KEYS=sk-proj-key1,sk-proj-key2
+OPENAI_BASE_URL=https://api.openai.com/v1
+
+# Official Gemini - Google AI models  
+GEMINI_API_KEYS=AIza_key1,AIza_key2
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1
+
+FILE_LOGGING=true
+```
+
+#### **Legacy Single-Provider Setup (Still Supported)**
+```env
+# OpenRouter example (legacy format)
 BASE_URL=https://openrouter.ai/api/v1
-OPENAI_API_KEYS=sk-or-v1-your-key-here
+OPENAI_API_KEYS=sk-or-v1-key1,sk-or-v1-key2,sk-or-v1-key3
+ADMIN_PASSWORD=your-password
 
-# Groq (ultra-fast inference for Llama, Mixtral, Gemma models)
+# Groq example (legacy format)
 BASE_URL=https://api.groq.com/openai/v1
-OPENAI_API_KEYS=gsk_your-groq-key-here
-
-# Together AI (open source models)
-BASE_URL=https://api.together.xyz/v1
-OPENAI_API_KEYS=your-together-key-here
-
-# Anthropic Claude (direct)
-BASE_URL=https://api.anthropic.com/v1
-OPENAI_API_KEYS=sk-ant-your-key-here
-
-# Use custom proxy or local server
-BASE_URL=https://your-proxy-server.com/v1
-# BASE_URL=http://localhost:8080/v1
+OPENAI_API_KEYS=gsk_key1,gsk_key2,gsk_key3
+ADMIN_PASSWORD=your-password
 
 # Use default endpoints (OpenAI official, Google Gemini)
-# BASE_URL=
+OPENAI_API_KEYS=sk-proj-key1,sk-proj-key2
+GEMINI_API_KEYS=AIza_key1,AIza_key2
+ADMIN_PASSWORD=your-password
+# BASE_URL= (leave empty for defaults)
 ```
 
 ## 📊 Logging Output
