@@ -66,6 +66,13 @@ class ProxyServer {
         return;
       }
       
+      // Handle common browser requests that aren't API calls
+      if (req.url === '/favicon.ico' || req.url === '/robots.txt') {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not found');
+        return;
+      }
+      
       const routeInfo = this.parseRoute(req.url);
       
       if (!routeInfo) {
@@ -533,12 +540,12 @@ class ProxyServer {
       const contentType = testResponse.headers.get('content-type') || 'unknown';
       
       // Single line log with compact info and response ID
-      const logMsg = `[TEST-${testId}] GET /v1/models (Gemini) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
+      const logMsg = `[TEST-${testId}] GET ${path} (Gemini) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
       
       // Store response data for viewing
       this.storeResponseData(testId, {
         method: 'GET',
-        endpoint: '/v1/models',
+        endpoint: path,
         apiType: 'Gemini',
         status: testResponse.status,
         statusText: testResponse.statusText,
@@ -555,7 +562,10 @@ class ProxyServer {
         error: testResponse.ok ? null : 'Invalid API key or network error' 
       };
     } catch (error) {
-      const logMsg = `[TEST-${testId}] GET /v1/models (Gemini) → ERROR: ${error.message}`;
+      const baseUrl = this.config.getGeminiBaseUrl();
+      const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
+      const path = baseUrlHasV1 ? '/models' : '/v1/models';
+      const logMsg = `[TEST-${testId}] GET ${path} (Gemini) → ERROR: ${error.message}`;
       console.log(logMsg);
       this.logApiRequest(logMsg);
       return { success: false, error: error.message };
@@ -578,12 +588,12 @@ class ProxyServer {
       const contentType = testResponse.headers.get('content-type') || 'unknown';
       
       // Single line log with compact info and response ID
-      const logMsg = `[TEST-${testId}] GET /v1/models (OpenAI) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
+      const logMsg = `[TEST-${testId}] GET ${path} (OpenAI) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
       
       // Store response data for viewing
       this.storeResponseData(testId, {
         method: 'GET',
-        endpoint: '/v1/models',
+        endpoint: path,
         apiType: 'OpenAI',
         status: testResponse.status,
         statusText: testResponse.statusText,
@@ -600,7 +610,10 @@ class ProxyServer {
         error: testResponse.ok ? null : 'Invalid API key or network error' 
       };
     } catch (error) {
-      const logMsg = `[TEST-${testId}] GET /v1/models (OpenAI) → ERROR: ${error.message}`;
+      const baseUrl = this.config.getOpenaiBaseUrl();
+      const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
+      const path = baseUrlHasV1 ? '/models' : '/v1/models';
+      const logMsg = `[TEST-${testId}] GET ${path} (OpenAI) → ERROR: ${error.message}`;
       console.log(logMsg);
       this.logApiRequest(logMsg);
       return { success: false, error: error.message };
