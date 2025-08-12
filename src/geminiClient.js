@@ -75,12 +75,32 @@ class GeminiClient {
 
   sendRequest(method, path, body, headers, apiKey) {
     return new Promise((resolve, reject) => {
-      // Construct full URL - handle cases where path might be empty or just "/"
+      // Construct full URL with smart version handling
       let fullUrl;
       if (!path || path === '/') {
         fullUrl = this.baseUrl;
       } else if (path.startsWith('/')) {
-        fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path.substring(1) : this.baseUrl + path;
+        // Handle version replacement if needed
+        let effectiveBaseUrl = this.baseUrl;
+        
+        // Extract version from path (anything that looks like /vXXX/)
+        const pathVersionMatch = path.match(/^\/v[^\/]+\//);
+        // Extract version from base URL (anything that ends with /vXXX)
+        const baseVersionMatch = this.baseUrl.match(/\/v[^\/]+$/);
+        
+        if (pathVersionMatch && baseVersionMatch) {
+          const pathVersion = pathVersionMatch[0].slice(0, -1); // Remove trailing /
+          const baseVersion = baseVersionMatch[0];
+          
+          // If versions are different, replace base URL version with path version
+          if (pathVersion !== baseVersion) {
+            effectiveBaseUrl = this.baseUrl.replace(baseVersion, pathVersion);
+            // Remove the version from path since it's now in the base URL
+            path = path.substring(pathVersion.length);
+          }
+        }
+        
+        fullUrl = effectiveBaseUrl.endsWith('/') ? effectiveBaseUrl + path.substring(1) : effectiveBaseUrl + path;
       } else {
         fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path : this.baseUrl + '/' + path;
       }

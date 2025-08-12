@@ -140,14 +140,14 @@ class ProxyServer {
     const urlObj = new URL(url, 'http://localhost');
     const path = urlObj.pathname;
     
-    // Parse new provider format: /{provider}/v1/*
+    // Parse new provider format: /{provider}/{version}/*
     const pathParts = path.split('/').filter(part => part.length > 0);
-    if (pathParts.length >= 2 && pathParts[1] === 'v1') {
+    if (pathParts.length >= 2) {
       const providerName = pathParts[0];
       const provider = this.config.getProvider(providerName);
       
       if (provider) {
-        // Extract the API path after /{provider}/v1
+        // Extract the API path after /{provider}/{version}
         const apiPath = '/' + pathParts.slice(1).join('/') + urlObj.search;
         
         return {
@@ -159,14 +159,14 @@ class ProxyServer {
       }
     }
     
-    // Backward compatibility - Legacy Gemini routes: /gemini/v1/* or /gemini/v1beta/*
+    // Backward compatibility - Legacy Gemini routes: /gemini/{version}/*
     if (path.startsWith('/gemini/')) {
       const geminiPath = path.substring(7); // Remove '/gemini'
-      if (geminiPath.startsWith('/v1/') || geminiPath.startsWith('/v1beta/')) {
+      // Check if it starts with any version pattern (/vXXX/)
+      if (geminiPath.match(/^\/v[^\/]+\//)) {
         // Check if base URL already includes version path
         const baseUrl = this.config.getGeminiBaseUrl();
-        const baseUrlHasVersion = baseUrl.endsWith('/v1') || baseUrl.endsWith('/v1beta') || 
-                                  baseUrl.includes('/v1/') || baseUrl.includes('/v1beta/');
+        const baseUrlHasVersion = baseUrl.match(/\/v[^\/]+$/);
         
         return {
           providerName: 'gemini',
@@ -178,19 +178,20 @@ class ProxyServer {
       }
     }
     
-    // Backward compatibility - Legacy OpenAI routes: /openai/v1/*
+    // Backward compatibility - Legacy OpenAI routes: /openai/{version}/*
     if (path.startsWith('/openai/')) {
       const openaiPath = path.substring(7); // Remove '/openai'
-      if (openaiPath.startsWith('/v1/')) {
-        // Check if base URL already includes /v1 path
+      // Check if it starts with any version pattern (/vXXX/)
+      if (openaiPath.match(/^\/v[^\/]+\//)) {
+        // Check if base URL already includes version path
         const baseUrl = this.config.getOpenaiBaseUrl();
-        const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
+        const baseUrlHasVersion = baseUrl.match(/\/v[^\/]+$/);
         
         return {
           providerName: 'openai',
           apiType: 'openai',
-          // If base URL already has /v1, remove it from the path to avoid duplication
-          path: baseUrlHasV1 ? openaiPath.substring(3) + urlObj.search : openaiPath + urlObj.search,
+          // If base URL already has version, remove it from the path to avoid duplication
+          path: baseUrlHasVersion ? this.adjustOpenaiPath(openaiPath, baseUrl) + urlObj.search : openaiPath + urlObj.search,
           legacy: true
         };
       }
@@ -200,37 +201,57 @@ class ProxyServer {
   }
 
   adjustProviderPath(apiPath, baseUrl) {
-    // Handle path adjustments to avoid duplication
-    if (baseUrl.endsWith('/v1') && apiPath.startsWith('/v1/')) {
-      return apiPath.substring(3); // Remove /v1 from path
+    // Simple path adjustment to avoid duplication
+    // If the base URL already ends with the beginning of our path, remove the duplicate part
+    
+    if (apiPath.startsWith('/')) {
+      // Find the longest common suffix of baseUrl and prefix of apiPath
+      const pathParts = apiPath.split('/').filter(part => part.length > 0);
+      
+      for (let i = pathParts.length; i > 0; i--) {
+        const pathPrefix = '/' + pathParts.slice(0, i).join('/');
+        if (baseUrl.endsWith(pathPrefix)) {
+          // Remove the duplicate part from the path
+          return '/' + pathParts.slice(i).join('/');
+        }
+      }
     }
-    if (baseUrl.endsWith('/v1beta') && apiPath.startsWith('/v1beta/')) {
-      return apiPath.substring(7); // Remove /v1beta from path
-    }
-    if (baseUrl.includes('/v1/') && apiPath.startsWith('/v1/')) {
-      return apiPath.substring(3); // Remove /v1 from path
-    }
-    if (baseUrl.includes('/v1beta/') && apiPath.startsWith('/v1beta/')) {
-      return apiPath.substring(7); // Remove /v1beta from path
-    }
+    
     return apiPath; // No adjustment needed
   }
 
   adjustGeminiPath(geminiPath, baseUrl) {
-    // For Gemini, handle version path adjustments
-    if (baseUrl.endsWith('/v1') && geminiPath.startsWith('/v1/')) {
-      return geminiPath.substring(3); // Remove /v1 from path
+    // For Gemini, handle version path adjustments dynamically
+    const baseVersionMatch = baseUrl.match(/\/v[^\/]+$/);
+    const pathVersionMatch = geminiPath.match(/^\/v[^\/]+\//);
+    
+    if (baseVersionMatch && pathVersionMatch) {
+      const baseVersion = baseVersionMatch[0];
+      const pathVersion = pathVersionMatch[0].slice(0, -1); // Remove trailing /
+      
+      if (baseVersion === pathVersion) {
+        return geminiPath.substring(pathVersion.length);
+      }
     }
-    if (baseUrl.endsWith('/v1beta') && geminiPath.startsWith('/v1beta/')) {
-      return geminiPath.substring(7); // Remove /v1beta from path
-    }
-    if (baseUrl.includes('/v1/') && geminiPath.startsWith('/v1/')) {
-      return geminiPath.substring(3); // Remove /v1 from path
-    }
-    if (baseUrl.includes('/v1beta/') && geminiPath.startsWith('/v1beta/')) {
-      return geminiPath.substring(7); // Remove /v1beta from path
-    }
+    
     return geminiPath; // No adjustment needed
+  }
+
+  adjustOpenaiPath(openaiPath, baseUrl) {
+    // For OpenAI, handle version path adjustments dynamically
+    const baseVersionMatch = baseUrl.match(/\/v[^\/]+$/);
+    const pathVersionMatch = openaiPath.match(/^\/v[^\/]+\//);
+    
+    if (baseVersionMatch && pathVersionMatch) {
+      const baseVersion = baseVersionMatch[0];
+      const pathVersion = pathVersionMatch[0].slice(0, -1); // Remove trailing /
+      
+      if (baseVersion === pathVersion) {
+        return openaiPath.substring(pathVersion.length);
+      }
+    }
+    
+    return openaiPath; // No adjustment needed
   }
 
   async getProviderClient(providerName, provider, legacy = false) {
