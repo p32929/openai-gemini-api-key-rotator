@@ -64,6 +64,14 @@ http://localhost:8990/openrouter/v1/*
 - **📱 Mobile Friendly**: Perfect experience on all devices
 - **📋 Auto-Generated Tests**: One-click copy of ready-to-test cURL commands
 
+### Screenshot
+
+<img width="3024" height="1714" alt="Image" src="https://github.com/user-attachments/assets/f265cc8f-941e-43e4-998e-c713dacfd248" />
+
+<img width="3024" height="1714" alt="Image" src="https://github.com/user-attachments/assets/c905e424-07d0-4a29-9e84-b053fa909c2f" />
+
+<img width="3024" height="1714" alt="Image" src="https://github.com/user-attachments/assets/0de6654d-eea8-49ad-9c19-7f2a799b604e" />
+
 ## 🛠️ How It Works
 
 1. **Smart Routing**: Routes requests to the right provider based on URL (`/provider/v1/*`)
@@ -92,9 +100,6 @@ Just set `PORT` and `ADMIN_PASSWORD`, then configure everything through the web 
 OPENAI_GROQ_API_KEYS=key1,key2,key3
 OPENAI_GROQ_BASE_URL=https://api.groq.com/openai/v1
 
-GEMINI_VERTEX_API_KEYS=key1,key2,key3
-GEMINI_VERTEX_BASE_URL=https://generativelanguage.googleapis.com/v1
-
 # Default providers (standard endpoints)
 OPENAI_API_KEYS=sk-proj-key1,sk-proj-key2
 GEMINI_API_KEYS=AIza_key1,AIza_key2
@@ -117,4 +122,4 @@ GEMINI_API_KEYS=AIza_key1,AIza_key2
 
 ---
 
-**Made with ❤️ for developers who hate rate limits**
+**🚀 Stop worrying about rate limits. Start building amazing things.**
