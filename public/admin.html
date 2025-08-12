@@ -892,15 +892,24 @@
                                 <h4 class="text-sm font-medium text-foreground">${provider.name}</h4>
                                 <p class="text-xs text-muted-foreground">${provider.apiType.toUpperCase()} Compatible • ${provider.keys.length} keys</p>
                             </div>
-                            <button 
-                                onclick="showDeleteProviderConfirmation('${provider.apiType}', '${provider.name}')" 
-                                class="text-destructive hover:text-destructive/80 transition-colors p-1"
-                                title="Delete Provider"
-                            >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
+                            <div class="flex items-center space-x-2">
+                                <button 
+                                    onclick="copyProviderCurl('${provider.apiType}', '${provider.name}')" 
+                                    class="btn btn-secondary px-2 py-1 text-xs font-medium"
+                                    title="Copy cURL test command"
+                                >
+                                    📋 Copy cURL
+                                </button>
+                                <button 
+                                    onclick="showDeleteProviderConfirmation('${provider.apiType}', '${provider.name}')" 
+                                    class="text-destructive hover:text-destructive/80 transition-colors p-1"
+                                    title="Delete Provider"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                             <div>
@@ -1351,6 +1360,77 @@
             };
             
             dialog.classList.remove('hidden');
+        }
+
+        // Generate and copy cURL command for testing a provider
+        async function copyProviderCurl(apiType, providerName) {
+            const baseUrl = `${window.location.protocol}//${window.location.host}`;
+            let curlCommand = '';
+            
+            if (apiType === 'openai') {
+                // OpenAI-compatible cURL command
+                curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/chat/completions" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello! Please say hello back."
+      }
+    ],
+    "max_tokens": 50,
+    "temperature": 0.7
+  }'`;
+            } else if (apiType === 'gemini') {
+                // Gemini-compatible cURL command
+                curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/models/gemini-2.5-pro:generateContent" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "Hello! Please say hello back."
+          }
+        ]
+      }
+    ],
+    "generationConfig": {
+      "maxOutputTokens": 50,
+      "temperature": 0.7
+    }
+  }'`;
+            } else {
+                showErrorToast('Unknown API type for cURL generation');
+                return;
+            }
+            
+            try {
+                // Copy to clipboard
+                await navigator.clipboard.writeText(curlCommand);
+                showSuccessToast(`📋 cURL command copied for provider '${providerName}'! Ready to test in terminal.`);
+            } catch (error) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = curlCommand;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    showSuccessToast(`📋 cURL command copied for provider '${providerName}'! Ready to test in terminal.`);
+                } catch (err) {
+                    showErrorToast('Failed to copy cURL command. Please copy manually.');
+                    console.log('cURL command:', curlCommand);
+                }
+                
+                document.body.removeChild(textArea);
+            }
         }
         
         async function deleteProvider(apiType, providerName) {
