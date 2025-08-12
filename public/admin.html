@@ -407,107 +407,77 @@
                     <p class="text-muted-foreground text-xs mt-1">Manage and test your API keys</p>
                 </div>
 
-                <!-- Basic Configuration -->
-                <div class="section">
-                    <h3 class="text-sm font-medium text-foreground mb-3">Basic Configuration</h3>
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-xs font-medium text-muted-foreground mb-2">Base URL (Optional)</label>
-                            <div class="flex items-center space-x-2">
-                                <input 
-                                    type="text" 
-                                    id="env_BASE_URL" 
-                                    class="input-field flex-1 px-2 py-1.5 text-sm rounded transition-colors" 
-                                    placeholder="https://api.example.com"
-                                    oninput="handleInputChange('baseUrl', this.value)"
-                                >
-                                <button 
-                                    id="saveBaseUrlBtn"
-                                    onclick="saveBaseUrl()" 
-                                    class="btn btn-primary px-2 py-1.5 text-xs font-medium opacity-50 cursor-not-allowed"
-                                    disabled
-                                >
-                                    <span>Save</span>
-                                </button>
-                                <button 
-                                    onclick="showDeleteBaseUrlConfirm()" 
-                                    class="text-destructive hover:text-destructive/80 transition-colors p-1.5"
-                                    title="Delete Base URL"
-                                >
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <p class="text-muted-foreground text-xs mt-1">Override the default API endpoints for both OpenAI and Gemini</p>
-                            <div id="baseUrlResult"></div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- API Keys List -->
+                <!-- Providers Management -->
                 <div class="space-y-4">
-                    <!-- OpenAI API Keys -->
+                    <!-- Existing Providers -->
                     <div class="section">
-                        <h3 class="text-sm font-medium text-foreground mb-3">OpenAI API Keys</h3>
-                        <div id="openaiKeysContainer" class="space-y-2 mb-3"></div>
-                        <!-- Add new OpenAI key input -->
-                        <div class="border-dashed border border-border rounded p-3 bg-muted/30">
-                            <div class="flex items-center space-x-2">
-                                <input 
-                                    type="text" 
-                                    id="newOpenaiKey" 
-                                    class="input-field flex-1 px-2 py-1.5 text-sm rounded transition-colors" 
-                                    placeholder="sk-..."
-                                    onkeypress="handleAddKeyEnter(event, 'openai')"
-                                >
-                                <button 
-                                    onclick="testNewApiKey('openai')" 
-                                    class="btn btn-secondary px-2 py-1.5 text-xs font-medium"
-                                >
-                                    <span>Test</span>
-                                </button>
-                                <button 
-                                    onclick="addApiKey('openai')" 
-                                    class="btn btn-primary px-2 py-1.5 text-xs font-medium"
-                                >
-                                    <span>Add</span>
-                                </button>
+                        <h3 class="text-sm font-medium text-foreground mb-3">Configured Providers</h3>
+                        <div id="providersContainer" class="space-y-3 mb-4"></div>
+                    </div>
+
+                    <!-- Add New Provider -->
+                    <div class="section">
+                        <h3 class="text-sm font-medium text-foreground mb-3">Add New Provider</h3>
+                        <div class="border-dashed border border-border rounded p-4 bg-muted/30 space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-muted-foreground mb-2">Provider Name</label>
+                                    <input 
+                                        type="text" 
+                                        id="newProviderName" 
+                                        class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors" 
+                                        placeholder="e.g., groq, together"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-muted-foreground mb-2">API Type</label>
+                                    <select 
+                                        id="newProviderApiType" 
+                                        class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors"
+                                    >
+                                        <option value="openai">OpenAI Compatible</option>
+                                        <option value="gemini">Gemini Compatible</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-muted-foreground mb-2">Base URL</label>
+                                    <input 
+                                        type="text" 
+                                        id="newProviderBaseUrl" 
+                                        class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors" 
+                                        placeholder="https://api.example.com/v1"
+                                    >
+                                </div>
                             </div>
-                            <div id="newOpenaiKeyResult" class="mt-2"></div>
+                            <div>
+                                <label class="block text-xs font-medium text-muted-foreground mb-2">First API Key</label>
+                                <div class="flex items-center space-x-2">
+                                    <input 
+                                        type="text" 
+                                        id="newProviderFirstKey" 
+                                        class="input-field flex-1 px-2 py-1.5 text-sm rounded transition-colors" 
+                                        placeholder="Enter your first API key"
+                                    >
+                                    <button 
+                                        onclick="testNewProvider()" 
+                                        class="btn btn-secondary px-3 py-1.5 text-xs font-medium"
+                                    >
+                                        Test
+                                    </button>
+                                    <button 
+                                        onclick="addNewProvider()" 
+                                        class="btn btn-primary px-3 py-1.5 text-xs font-medium"
+                                    >
+                                        Save Provider
+                                    </button>
+                                </div>
+                                <p class="text-muted-foreground text-xs mt-1">You can add more keys after creating the provider</p>
+                            </div>
+                            <div id="newProviderResult" class="mt-2"></div>
                         </div>
                     </div>
 
-                    <!-- Gemini API Keys -->
-                    <div class="section">
-                        <h3 class="text-sm font-medium text-foreground mb-3">Gemini API Keys</h3>
-                        <div id="geminiKeysContainer" class="space-y-2 mb-3"></div>
-                        <!-- Add new Gemini key input -->
-                        <div class="border-dashed border border-border rounded p-3 bg-muted/30">
-                            <div class="flex items-center space-x-2">
-                                <input 
-                                    type="text" 
-                                    id="newGeminiKey" 
-                                    class="input-field flex-1 px-2 py-1.5 text-sm rounded transition-colors" 
-                                    placeholder="AIzaSy..."
-                                    onkeypress="handleAddKeyEnter(event, 'gemini')"
-                                >
-                                <button 
-                                    onclick="testNewApiKey('gemini')" 
-                                    class="btn btn-secondary px-2 py-1.5 text-xs font-medium"
-                                >
-                                    <span>Test</span>
-                                </button>
-                                <button 
-                                    onclick="addApiKey('gemini')" 
-                                    class="btn btn-primary px-2 py-1.5 text-xs font-medium"
-                                >
-                                    <span>Add</span>
-                                </button>
-                            </div>
-                            <div id="newGeminiKeyResult" class="mt-2"></div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Status Messages -->
@@ -714,164 +684,366 @@
         let originalValues = {};
         
         function renderEnvVars() {
-            // Load basic configuration
-            const baseUrlInput = document.getElementById('env_BASE_URL');
-            baseUrlInput.value = envVars.BASE_URL || '';
-            originalValues.baseUrl = baseUrlInput.value;
-            
             // Load file logging status
             document.getElementById('loggingToggle').checked = envVars.FILE_LOGGING === 'true';
             
-            // Parse and display OpenAI keys
-            const openaiKeys = envVars.OPENAI_API_KEYS ? envVars.OPENAI_API_KEYS.split(',') : [];
-            const openaiContainer = document.getElementById('openaiKeysContainer');
-            openaiContainer.innerHTML = '';
-            
-            openaiKeys.forEach((key, index) => {
-                if (key.trim()) {
-                    const keyDiv = document.createElement('div');
-                    keyDiv.className = 'key-row';
-                    keyDiv.innerHTML = `
-                        <div class="flex items-center space-x-2">
-                            <input 
-                                type="text" 
-                                value="${key.trim()}" 
-                                class="input-field flex-1 px-2 py-1.5 rounded transition-colors font-mono text-sm" 
-                                oninput="handleApiKeyChange('openai', ${index}, this.value)"
-                                data-original-value="${key.trim()}"
-                            >
-                            <button 
-                                id="saveOpenaiBtn-${index}"
-                                onclick="saveSpecificApiKey('openai', ${index})" 
-                                class="btn btn-primary px-2 py-1.5 text-xs font-medium opacity-50 cursor-not-allowed"
-                                disabled
-                            >
-                                <span>Save</span>
-                            </button>
-                            <button 
-                                onclick="testSpecificApiKey('openai', '${key.trim()}', ${index})" 
-                                class="btn btn-secondary px-2 py-1.5 text-xs font-medium"
-                            >
-                                <span>Test</span>
-                            </button>
-                            <button 
-                                onclick="showDeleteConfirm('openai', ${index})" 
-                                class="text-destructive hover:text-destructive/80 transition-colors p-2"
-                            >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div id="openai-test-result-${index}" class="mt-2"></div>
-                    `;
-                    openaiContainer.appendChild(keyDiv);
-                }
-            });
-            
-            // Parse and display Gemini keys
-            const geminiKeys = envVars.GEMINI_API_KEYS ? envVars.GEMINI_API_KEYS.split(',') : [];
-            const geminiContainer = document.getElementById('geminiKeysContainer');
-            geminiContainer.innerHTML = '';
-            
-            geminiKeys.forEach((key, index) => {
-                if (key.trim()) {
-                    const keyDiv = document.createElement('div');
-                    keyDiv.className = 'key-row';
-                    keyDiv.innerHTML = `
-                        <div class="flex items-center space-x-2">
-                            <input 
-                                type="text" 
-                                value="${key.trim()}" 
-                                class="input-field flex-1 px-2 py-1.5 rounded transition-colors font-mono text-sm" 
-                                oninput="handleApiKeyChange('gemini', ${index}, this.value)"
-                                data-original-value="${key.trim()}"
-                            >
-                            <button 
-                                id="saveGeminiBtn-${index}"
-                                onclick="saveSpecificApiKey('gemini', ${index})" 
-                                class="btn btn-primary px-2 py-1.5 text-xs font-medium opacity-50 cursor-not-allowed"
-                                disabled
-                            >
-                                <span>Save</span>
-                            </button>
-                            <button 
-                                onclick="testSpecificApiKey('gemini', '${key.trim()}', ${index})" 
-                                class="btn btn-secondary px-2 py-1.5 text-xs font-medium"
-                            >
-                                <span>Test</span>
-                            </button>
-                            <button 
-                                onclick="showDeleteConfirm('gemini', ${index})" 
-                                class="text-destructive hover:text-destructive/80 transition-colors p-2"
-                            >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div id="gemini-test-result-${index}" class="mt-2"></div>
-                    `;
-                    geminiContainer.appendChild(keyDiv);
-                }
-            });
+            // Render providers
+            renderProviders();
         }
+
+        function renderProviders() {
+            const providersContainer = document.getElementById('providersContainer');
+            providersContainer.innerHTML = '';
+            
+            // Group environment variables by provider
+            const providers = {};
+            
+            for (const [key, value] of Object.entries(envVars)) {
+                if (key.endsWith('_API_KEYS') && value) {
+                    const match = key.match(/^(.+)_(.+)_API_KEYS$/);
+                    if (match && match.length >= 3) {
+                        const apiType = match[1].toLowerCase();
+                        const providerName = match[2].toLowerCase();
+                        const providerKey = `${apiType}_${providerName}`;
+                        
+                        if (!providers[providerKey]) {
+                            providers[providerKey] = {
+                                name: providerName,
+                                apiType: apiType,
+                                keys: [],
+                                baseUrl: ''
+                            };
+                        }
+                        providers[providerKey].keys = value.split(',').map(k => k.trim()).filter(k => k);
+                    }
+                } else if (key.endsWith('_BASE_URL') && value) {
+                    const match = key.match(/^(.+)_(.+)_BASE_URL$/);
+                    if (match && match.length >= 3) {
+                        const apiType = match[1].toLowerCase();
+                        const providerName = match[2].toLowerCase();
+                        const providerKey = `${apiType}_${providerName}`;
+                        
+                        if (!providers[providerKey]) {
+                            providers[providerKey] = {
+                                name: providerName,
+                                apiType: apiType,
+                                keys: [],
+                                baseUrl: ''
+                            };
+                        }
+                        providers[providerKey].baseUrl = value;
+                    }
+                }
+            }
+            
+            // Display each provider
+            Object.values(providers).forEach((provider, index) => {
+                const providerDiv = document.createElement('div');
+                providerDiv.className = 'key-row border-l-4 border-l-primary';
+                providerDiv.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-sm font-medium text-foreground">${provider.name}</h4>
+                                <p class="text-xs text-muted-foreground">${provider.apiType.toUpperCase()} Compatible • ${provider.keys.length} keys</p>
+                            </div>
+                            <button 
+                                onclick="deleteProvider('${provider.apiType}', '${provider.name}')" 
+                                class="text-destructive hover:text-destructive/80 transition-colors p-1"
+                                title="Delete Provider"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <label class="block text-muted-foreground mb-1">Base URL</label>
+                                <div class="font-mono text-foreground bg-muted px-2 py-1 rounded text-xs break-all">
+                                    ${provider.baseUrl || 'Default'}
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-muted-foreground mb-1">Endpoint</label>
+                                <div class="font-mono text-foreground bg-muted px-2 py-1 rounded text-xs">
+                                    /${provider.name}/v1/*
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-muted-foreground mb-1 text-xs">API Keys</label>
+                            <div class="space-y-1">
+                                ${provider.keys.map((key, keyIndex) => `
+                                    <div class="flex items-center space-x-2">
+                                        <div class="flex-1 font-mono text-xs text-foreground bg-muted px-2 py-1 rounded">
+                                            ${key.length > 16 ? key.substring(0, 8) + '...' + key.slice(-4) : key}
+                                        </div>
+                                        <button 
+                                            onclick="testProviderKey('${provider.apiType}', '${provider.name}', '${key}', ${keyIndex})" 
+                                            class="btn btn-secondary px-2 py-1 text-xs font-medium"
+                                        >
+                                            Test
+                                        </button>
+                                        <button 
+                                            onclick="deleteProviderKey('${provider.apiType}', '${provider.name}', ${keyIndex})" 
+                                            class="btn btn-destructive px-2 py-1 text-xs font-medium"
+                                            title="Delete Key"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                `).join('')}
+                                <div class="flex items-center space-x-2 mt-2 pt-2 border-t border-border">
+                                    <input 
+                                        type="text" 
+                                        id="newKey_${provider.apiType}_${provider.name}" 
+                                        class="input-field flex-1 px-2 py-1 text-xs rounded transition-colors" 
+                                        placeholder="Enter new API key"
+                                    >
+                                    <button 
+                                        onclick="testProviderNewKey('${provider.apiType}', '${provider.name}')" 
+                                        class="btn btn-secondary px-2 py-1 text-xs font-medium"
+                                    >
+                                        Test
+                                    </button>
+                                    <button 
+                                        onclick="saveProviderKey('${provider.apiType}', '${provider.name}')" 
+                                        class="btn btn-primary px-2 py-1 text-xs font-medium"
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                                <div id="newKeyResult_${provider.apiType}_${provider.name}" class="mt-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                providersContainer.appendChild(providerDiv);
+            });
+            
+            if (Object.keys(providers).length === 0) {
+                providersContainer.innerHTML = '<div class="text-muted-foreground text-sm text-center py-4">No providers configured yet. Add one below.</div>';
+            }
+        }
+        
+        // Removed legacy key rendering - now everything is managed as providers
         
         function updateEnvVar(key, value) {
             envVars[key] = value;
         }
         
-        // Handle input changes and enable/disable save buttons
-        function handleInputChange(inputType, value) {
-            if (inputType === 'baseUrl') {
-                envVars.BASE_URL = value;
-                const saveBtn = document.getElementById('saveBaseUrlBtn');
-                const hasChanged = value !== originalValues.baseUrl;
+        // Removed old input change handlers - no longer needed
+        
+        // Legacy functions removed - using provider management instead
+        
+        // Moved to removeLegacyKey function
+        
+        // Confirmation dialog variables
+        let pendingDelete = null;
+        
+        // Removed - using direct confirmation instead
+        
+        // Removed - no longer needed
+        
+        function cancelDelete() {
+            pendingDelete = null;
+            document.getElementById('confirmDialog').classList.add('hidden');
+        }
+        
+        function confirmDelete() {
+            if (pendingDelete) {
+                // No pending deletes in new system
+            }
+            document.getElementById('confirmDialog').classList.add('hidden');
+        }
+        
+        // New provider functions
+        async function addNewProvider() {
+            const name = document.getElementById('newProviderName').value.trim();
+            const apiType = document.getElementById('newProviderApiType').value;
+            const baseUrl = document.getElementById('newProviderBaseUrl').value.trim();
+            const firstKey = document.getElementById('newProviderFirstKey').value.trim();
+            const resultDiv = document.getElementById('newProviderResult');
+            
+            if (!name || !firstKey) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Provider name and first API key are required</div>';
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                return;
+            }
+            
+            // Validate provider name (alphanumeric and underscores only)
+            if (!/^[a-zA-Z0-9_]+$/.test(name)) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Provider name can only contain letters, numbers, and underscores</div>';
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                return;
+            }
+            
+            // Create environment variable names
+            const keysVar = `${apiType.toUpperCase()}_${name.toUpperCase()}_API_KEYS`;
+            const baseUrlVar = `${apiType.toUpperCase()}_${name.toUpperCase()}_BASE_URL`;
+            
+            // Check if provider already exists
+            if (envVars[keysVar]) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Provider with this name already exists</div>';
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                return;
+            }
+            
+            // Update envVars
+            envVars[keysVar] = firstKey;
+            if (baseUrl) {
+                envVars[baseUrlVar] = baseUrl;
+            }
+            
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
                 
-                if (hasChanged) {
-                    saveBtn.disabled = false;
-                    saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    saveBtn.classList.add('hover:opacity-90');
+                if (response.ok) {
+                    // Clear form
+                    document.getElementById('newProviderName').value = '';
+                    document.getElementById('newProviderBaseUrl').value = '';
+                    document.getElementById('newProviderFirstKey').value = '';
+                    
+                    renderEnvVars();
+                    
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Provider added successfully!</span></div>';
+                    setTimeout(() => resultDiv.innerHTML = '', 3000);
                 } else {
-                    saveBtn.disabled = true;
-                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    saveBtn.classList.remove('hover:opacity-90');
+                    // Revert changes
+                    delete envVars[keysVar];
+                    if (baseUrl) delete envVars[baseUrlVar];
+                    showError('envError', 'Failed to save provider');
                 }
+            } catch (error) {
+                // Revert changes
+                delete envVars[keysVar];
+                if (baseUrl) delete envVars[baseUrlVar];
+                showError('envError', 'Failed to save provider: ' + error.message);
             }
         }
         
-        function handleApiKeyChange(apiType, index, value) {
-            updateApiKey(apiType, index, value);
-            const saveBtn = document.getElementById(`save${apiType.charAt(0).toUpperCase() + apiType.slice(1)}Btn-${index}`);
-            const input = event.target;
-            const originalValue = input.getAttribute('data-original-value');
-            const hasChanged = value !== originalValue;
+        async function testNewProvider() {
+            const name = document.getElementById('newProviderName').value.trim();
+            const apiType = document.getElementById('newProviderApiType').value;
+            const baseUrl = document.getElementById('newProviderBaseUrl').value.trim();
+            const firstKey = document.getElementById('newProviderFirstKey').value.trim();
+            const resultDiv = document.getElementById('newProviderResult');
             
-            if (hasChanged) {
-                saveBtn.disabled = false;
-                saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                saveBtn.classList.add('hover:opacity-90');
+            if (!firstKey) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Please enter an API key to test</div>';
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-md text-sm">Testing API key...</div>';
+            
+            try {
+                const response = await fetch('/admin/api/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        apiType: apiType, 
+                        apiKey: firstKey,
+                        baseUrl: baseUrl 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>API key is valid! Ready to add provider.</span></div>';
+                } else {
+                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>${result.error || 'API key is invalid'}</span></div>`;
+                }
+                
+                setTimeout(() => resultDiv.innerHTML = '', 5000);
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Test failed</div>';
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
+            }
+        }
+        
+        async function deleteProvider(apiType, providerName) {
+            const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
+            const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
+            
+            if (!confirm(`Delete provider '${providerName}'?\n\nThis will remove all its API keys and configuration.`)) {
+                return;
+            }
+            
+            // Remove from envVars
+            delete envVars[keysVar];
+            delete envVars[baseUrlVar];
+            
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+                
+                if (response.ok) {
+                    renderEnvVars();
+                } else {
+                    showError('envError', 'Failed to delete provider');
+                }
+            } catch (error) {
+                showError('envError', 'Delete failed: ' + error.message);
+            }
+        }
+        
+        async function testProviderKey(apiType, providerName, apiKey, keyIndex) {
+            // Get provider's base URL
+            const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
+            const baseUrl = envVars[baseUrlVar] || null;
+            
+            try {
+                const response = await fetch('/admin/api/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        apiType: apiType, 
+                        apiKey: apiKey,
+                        baseUrl: baseUrl
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('API key is valid!');
+                } else {
+                    alert(`API key test failed: ${result.error || 'Invalid key'}`);
+                }
+            } catch (error) {
+                alert('Test failed: ' + error.message);
+            }
+        }
+        
+        async function deleteProviderKey(apiType, providerName, keyIndex) {
+            if (!confirm(`Delete this API key from provider '${providerName}'?`)) {
+                return;
+            }
+            
+            const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
+            const keys = envVars[keysVar] ? envVars[keysVar].split(',') : [];
+            
+            keys.splice(keyIndex, 1);
+            
+            if (keys.length === 0) {
+                // If no keys left, delete the entire provider
+                delete envVars[keysVar];
+                const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
+                delete envVars[baseUrlVar];
             } else {
-                saveBtn.disabled = true;
-                saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                saveBtn.classList.remove('hover:opacity-90');
+                envVars[keysVar] = keys.filter(k => k.trim()).join(',');
             }
-        }
-        
-        function updateApiKey(apiType, index, value) {
-            const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
-            const keys = envVars[keyName] ? envVars[keyName].split(',') : [];
-            keys[index] = value.trim();
-            envVars[keyName] = keys.filter(k => k.trim()).join(',');
-        }
-        
-        async function removeApiKey(apiType, index) {
-            const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
-            const keys = envVars[keyName] ? envVars[keyName].split(',') : [];
-            keys.splice(index, 1);
-            envVars[keyName] = keys.filter(k => k.trim()).join(',');
             
-            // Save the changes to .env file
             try {
                 const response = await fetch('/admin/api/env', {
                     method: 'POST',
@@ -889,232 +1061,66 @@
             }
         }
         
-        // Confirmation dialog variables
-        let pendingDelete = null;
-        
-        function showDeleteConfirm(apiType, index) {
-            const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
-            const keys = envVars[keyName] ? envVars[keyName].split(',') : [];
-            const keyToDelete = keys[index];
-            
-            // Store the delete action for later
-            pendingDelete = { type: 'apiKey', apiType, index };
-            
-            // Update the confirmation message
-            const maskedKey = keyToDelete.length > 8 
-                ? keyToDelete.substring(0, 8) + '...' + keyToDelete.slice(-4)
-                : keyToDelete;
-            document.getElementById('confirmMessage').textContent = 
-                `Are you sure you want to delete this ${apiType.toUpperCase()} API key?\n\nKey: ${maskedKey}`;
-            
-            // Show dialog
-            document.getElementById('confirmDialog').classList.remove('hidden');
-        }
-        
-        function showDeleteBaseUrlConfirm() {
-            const currentBaseUrl = document.getElementById('env_BASE_URL').value || 'Not set';
-            
-            // Store the delete action for later
-            pendingDelete = { type: 'baseUrl' };
-            
-            // Update the confirmation message
-            document.getElementById('confirmMessage').textContent = 
-                `Are you sure you want to delete the Base URL from your configuration?\n\nCurrent value: ${currentBaseUrl}\n\nThis will remove BASE_URL from your .env file and revert to default API endpoints.`;
-            
-            // Show dialog
-            document.getElementById('confirmDialog').classList.remove('hidden');
-        }
-        
-        function cancelDelete() {
-            pendingDelete = null;
-            document.getElementById('confirmDialog').classList.add('hidden');
-        }
-        
-        function confirmDelete() {
-            if (pendingDelete) {
-                if (pendingDelete.type === 'apiKey') {
-                    removeApiKey(pendingDelete.apiType, pendingDelete.index);
-                } else if (pendingDelete.type === 'baseUrl') {
-                    deleteBaseUrl();
-                }
-                pendingDelete = null;
-            }
-            document.getElementById('confirmDialog').classList.add('hidden');
-        }
-        
-        async function addApiKey(apiType) {
-            const inputId = apiType === 'openai' ? 'newOpenaiKey' : 'newGeminiKey';
-            const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
-            const resultId = apiType === 'openai' ? 'newOpenaiKeyResult' : 'newGeminiKeyResult';
+        async function saveProviderKey(apiType, providerName) {
+            const inputId = `newKey_${apiType}_${providerName}`;
+            const resultId = `newKeyResult_${apiType}_${providerName}`;
             const newKey = document.getElementById(inputId).value.trim();
             const resultDiv = document.getElementById(resultId);
             
-            if (newKey) {
-                // Update the envVars object
-                const existingKeys = envVars[keyName] ? envVars[keyName].split(',') : [];
-                existingKeys.push(newKey);
-                envVars[keyName] = existingKeys.filter(k => k.trim()).join(',');
-                
-                // Save to .env file
-                try {
-                    const response = await fetch('/admin/api/env', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(envVars)
-                    });
-                    
-                    if (response.ok) {
-                        document.getElementById(inputId).value = '';
-                        renderEnvVars();
-                        
-                        // Show success message
-                        resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>API key added successfully!</span></div>';
-                        setTimeout(() => {
-                            resultDiv.innerHTML = '';
-                        }, 3000);
-                    } else {
-                        showError('envError', 'Failed to save API key to .env file');
-                        // Revert the change
-                        const revertedKeys = existingKeys.slice(0, -1);
-                        envVars[keyName] = revertedKeys.filter(k => k.trim()).join(',');
-                    }
-                } catch (error) {
-                    showError('envError', 'Failed to save API key: ' + error.message);
-                    // Revert the change
-                    const revertedKeys = existingKeys.slice(0, -1);
-                    envVars[keyName] = revertedKeys.filter(k => k.trim()).join(',');
-                }
-            }
-        }
-        
-        function handleAddKeyEnter(event, apiType) {
-            if (event.key === 'Enter') {
-                addApiKey(apiType);
-            }
-        }
-        
-        // Delete base URL
-        async function deleteBaseUrl() {
-            try {
-                // Remove BASE_URL from envVars
-                delete envVars.BASE_URL;
-                
-                const response = await fetch('/admin/api/env', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(envVars)
-                });
-                
-                if (response.ok) {
-                    // Clear the input field and reset original value
-                    document.getElementById('env_BASE_URL').value = '';
-                    originalValues.baseUrl = '';
-                    
-                    // Disable save button
-                    const saveBtn = document.getElementById('saveBaseUrlBtn');
-                    saveBtn.disabled = true;
-                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    saveBtn.classList.remove('hover:opacity-90');
-                    
-                    const resultDiv = document.getElementById('baseUrlResult');
-                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Base URL deleted from .env file!</span></div>';
-                    setTimeout(() => {
-                        resultDiv.innerHTML = '';
-                    }, 2000);
-                } else {
-                    showError('envError', 'Failed to delete base URL');
-                }
-            } catch (error) {
-                showError('envError', 'Delete failed: ' + error.message);
-            }
-        }
-        
-        // Save base URL
-        async function saveBaseUrl() {
-            try {
-                const response = await fetch('/admin/api/env', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(envVars)
-                });
-                
-                if (response.ok) {
-                    // Update original value and disable save button
-                    originalValues.baseUrl = envVars.BASE_URL;
-                    const saveBtn = document.getElementById('saveBaseUrlBtn');
-                    saveBtn.disabled = true;
-                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    saveBtn.classList.remove('hover:opacity-90');
-                    
-                    const resultDiv = document.getElementById('baseUrlResult');
-                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Base URL saved!</span></div>';
-                    setTimeout(() => {
-                        resultDiv.innerHTML = '';
-                    }, 2000);
-                } else {
-                    showError('envError', 'Failed to save base URL');
-                }
-            } catch (error) {
-                showError('envError', 'Save failed: ' + error.message);
-            }
-        }
-        
-        // Save individual API key
-        async function saveSpecificApiKey(apiType, index) {
-            try {
-                const response = await fetch('/admin/api/env', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(envVars)
-                });
-                
-                if (response.ok) {
-                    // Update original value and disable save button
-                    const keyName = apiType === 'openai' ? 'OPENAI_API_KEYS' : 'GEMINI_API_KEYS';
-                    const keys = envVars[keyName] ? envVars[keyName].split(',') : [];
-                    const newValue = keys[index];
-                    
-                    // Find the input and update its original value
-                    const inputs = document.querySelectorAll(`#${apiType}KeysContainer input`);
-                    if (inputs[index]) {
-                        inputs[index].setAttribute('data-original-value', newValue);
-                    }
-                    
-                    // Disable save button
-                    const saveBtn = document.getElementById(`save${apiType.charAt(0).toUpperCase() + apiType.slice(1)}Btn-${index}`);
-                    saveBtn.disabled = true;
-                    saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    saveBtn.classList.remove('hover:opacity-90');
-                    
-                    // Show success feedback briefly
-                    const resultDiv = document.getElementById(`${apiType}-test-result-${index}`);
-                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Saved!</span></div>';
-                    setTimeout(() => {
-                        resultDiv.innerHTML = '';
-                    }, 2000);
-                } else {
-                    showError('envError', 'Failed to save API key');
-                }
-            } catch (error) {
-                showError('envError', 'Save failed: ' + error.message);
-            }
-        }
-        
-        // Test new API key before adding
-        async function testNewApiKey(apiType) {
-            const inputId = apiType === 'openai' ? 'newOpenaiKey' : 'newGeminiKey';
-            const resultId = apiType === 'openai' ? 'newOpenaiKeyResult' : 'newGeminiKeyResult';
-            const keyInput = document.getElementById(inputId);
-            const resultDiv = document.getElementById(resultId);
-            
-            const apiKey = keyInput.value.trim();
-            if (!apiKey) {
-                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Please enter an API key first</div>';
-                setTimeout(() => {
-                    resultDiv.innerHTML = '';
-                }, 3000);
+            if (!newKey) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Please enter an API key</div>';
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
                 return;
             }
+            
+            const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
+            const existingKeys = envVars[keysVar] ? envVars[keysVar].split(',') : [];
+            existingKeys.push(newKey);
+            envVars[keysVar] = existingKeys.filter(k => k.trim()).join(',');
+            
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+                
+                if (response.ok) {
+                    document.getElementById(inputId).value = '';
+                    renderEnvVars();
+                    
+                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>API key saved!</span></div>';
+                    setTimeout(() => resultDiv.innerHTML = '', 3000);
+                } else {
+                    showError('envError', 'Failed to save API key');
+                    // Revert the change
+                    const revertedKeys = existingKeys.slice(0, -1);
+                    envVars[keysVar] = revertedKeys.filter(k => k.trim()).join(',');
+                }
+            } catch (error) {
+                showError('envError', 'Failed to save API key: ' + error.message);
+                // Revert the change
+                const revertedKeys = existingKeys.slice(0, -1);
+                envVars[keysVar] = revertedKeys.filter(k => k.trim()).join(',');
+            }
+        }
+        
+        async function testProviderNewKey(apiType, providerName) {
+            const inputId = `newKey_${apiType}_${providerName}`;
+            const resultId = `newKeyResult_${apiType}_${providerName}`;
+            const newKey = document.getElementById(inputId).value.trim();
+            const resultDiv = document.getElementById(resultId);
+            
+            if (!newKey) {
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Please enter an API key to test</div>';
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
+                return;
+            }
+            
+            // Get provider's base URL
+            const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
+            const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
+            const baseUrl = envVars[baseUrlVar] || null;
             
             resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-md text-sm">Testing...</div>';
             
@@ -1124,7 +1130,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         apiType: apiType, 
-                        apiKey: apiKey 
+                        apiKey: newKey,
+                        baseUrl: baseUrl
                     })
                 });
                 
@@ -1133,56 +1140,29 @@
                 if (result.success) {
                     resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Valid! Ready to add.</span></div>';
                 } else {
-                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>Invalid key</span></div>`;
+                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>${result.error || 'Invalid key'}</span></div>`;
                 }
                 
-                // Clear result after 5 seconds
-                setTimeout(() => {
-                    resultDiv.innerHTML = '';
-                }, 5000);
+                setTimeout(() => resultDiv.innerHTML = '', 5000);
             } catch (error) {
-                resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Test failed</div>`;
-                setTimeout(() => {
-                    resultDiv.innerHTML = '';
-                }, 3000);
+                resultDiv.innerHTML = '<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">Test failed</div>';
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
             }
         }
+        
+        // Removed legacy key functions - everything is now managed as providers
+        
+        // Removed old functions - replaced with provider management
+        
+        // Removed - no longer needed
+        
+        // Removed - no longer needed
+        
+        // Removed - no longer needed with new provider system
+        
+        // Removed - replaced with testNewProvider function
 
-        // API Testing functionality for individual keys
-        async function testSpecificApiKey(apiType, apiKey, index) {
-            const resultDiv = document.getElementById(`${apiType}-test-result-${index}`);
-            
-            resultDiv.innerHTML = '<div class="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-md text-sm mt-2">Testing...</div>';
-            
-            try {
-                const response = await fetch('/admin/api/test', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        apiType: apiType, 
-                        apiKey: apiKey 
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    resultDiv.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Valid!</span></div>';
-                } else {
-                    resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm mt-2 flex items-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>Invalid</span></div>`;
-                }
-                
-                // Clear result after 3 seconds
-                setTimeout(() => {
-                    resultDiv.innerHTML = '';
-                }, 3000);
-            } catch (error) {
-                resultDiv.innerHTML = `<div class="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm mt-2">Test failed</div>`;
-                setTimeout(() => {
-                    resultDiv.innerHTML = '';
-                }, 3000);
-            }
-        }
+        // Removed legacy API key testing - everything is now provider-based
         
         async function saveEnvVars() {
             try {

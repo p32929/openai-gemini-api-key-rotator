@@ -9,6 +9,7 @@ class ProxyServer {
     this.config = config;
     this.geminiClient = geminiClient;
     this.openaiClient = openaiClient;
+    this.providerClients = new Map(); // Map of provider_name -> client instance
     this.server = null;
     this.adminSessionToken = null;
     this.fileLoggingEnabled = this.getFileLoggingStatus();
@@ -28,14 +29,20 @@ class ProxyServer {
 
     this.server.listen(this.config.getPort(), () => {
       console.log(`Multi-API proxy server running on port ${this.config.getPort()}`);
+      
+      const providers = this.config.getProviders();
+      for (const [providerName, config] of providers.entries()) {
+        console.log(`Provider '${providerName}' (${config.apiType}): /${providerName}/v1/* → ${config.baseUrl}`);
+      }
+      
+      // Backward compatibility logging
       if (this.config.hasGeminiKeys()) {
-        console.log(`Available Gemini API keys: ${this.config.getGeminiApiKeys().length}`);
-        console.log('Gemini endpoints: /gemini/v1/* and /gemini/v1beta/*');
+        console.log(`Legacy Gemini endpoints: /gemini/v1/* and /gemini/v1beta/*`);
       }
       if (this.config.hasOpenaiKeys()) {
-        console.log(`Available OpenAI API keys: ${this.config.getOpenaiApiKeys().length}`);
-        console.log('OpenAI endpoints: /openai/v1/*');
+        console.log(`Legacy OpenAI endpoints: /openai/v1/*`);
       }
+      
       if (this.config.hasAdminPassword()) {
         console.log(`Admin panel available at: http://localhost:${this.config.getPort()}/admin`);
       }
@@ -78,34 +85,27 @@ class ProxyServer {
       if (!routeInfo) {
         console.log(`[REQ-${requestId}] Invalid path: ${req.url}`);
         console.log(`[REQ-${requestId}] Response: 400 Bad Request - Invalid API path`);
-        this.sendError(res, 400, 'Invalid API path. Use /gemini/v1/* or /openai/v1/*');
+        this.sendError(res, 400, 'Invalid API path. Use /{provider}/v1/* format');
         return;
       }
 
-      const { apiType, path } = routeInfo;
-      console.log(`[REQ-${requestId}] Proxying to ${apiType.toUpperCase()}: ${path}`);
-      this.logApiRequest(`[REQ-${requestId}] Proxying to ${apiType.toUpperCase()}: ${path}`);
+      const { providerName, apiType, path, provider, legacy } = routeInfo;
+      console.log(`[REQ-${requestId}] Proxying to provider '${providerName}' (${apiType.toUpperCase()}): ${path}`);
+      this.logApiRequest(`[REQ-${requestId}] Proxying to provider '${providerName}' (${apiType.toUpperCase()}): ${path}`);
       
       const headers = this.extractRelevantHeaders(req.headers, apiType);
       let response;
       
-      if (apiType === 'gemini') {
-        if (!this.geminiClient) {
-          console.log(`[REQ-${requestId}] Response: 503 Service Unavailable - Gemini API not configured`);
-          this.logApiRequest(`[REQ-${requestId}] Response: 503 Service Unavailable - Gemini API not configured`);
-          this.sendError(res, 503, 'Gemini API not configured');
-          return;
-        }
-        response = await this.geminiClient.makeRequest(req.method, path, body, headers);
-      } else if (apiType === 'openai') {
-        if (!this.openaiClient) {
-          console.log(`[REQ-${requestId}] Response: 503 Service Unavailable - OpenAI API not configured`);
-          this.logApiRequest(`[REQ-${requestId}] Response: 503 Service Unavailable - OpenAI API not configured`);
-          this.sendError(res, 503, 'OpenAI API not configured');
-          return;
-        }
-        response = await this.openaiClient.makeRequest(req.method, path, body, headers);
+      // Get or create client for this provider
+      const client = await this.getProviderClient(providerName, provider, legacy);
+      if (!client) {
+        console.log(`[REQ-${requestId}] Response: 503 Service Unavailable - Provider '${providerName}' not configured`);
+        this.logApiRequest(`[REQ-${requestId}] Response: 503 Service Unavailable - Provider '${providerName}' not configured`);
+        this.sendError(res, 503, `Provider '${providerName}' not configured`);
+        return;
       }
+      
+      response = await client.makeRequest(req.method, path, body, headers);
       
       this.logApiResponse(requestId, response, body);
       this.sendResponse(res, response);
@@ -140,7 +140,26 @@ class ProxyServer {
     const urlObj = new URL(url, 'http://localhost');
     const path = urlObj.pathname;
     
-    // Gemini routes: /gemini/v1/* or /gemini/v1beta/*
+    // Parse new provider format: /{provider}/v1/*
+    const pathParts = path.split('/').filter(part => part.length > 0);
+    if (pathParts.length >= 2 && pathParts[1] === 'v1') {
+      const providerName = pathParts[0];
+      const provider = this.config.getProvider(providerName);
+      
+      if (provider) {
+        // Extract the API path after /{provider}/v1
+        const apiPath = '/' + pathParts.slice(1).join('/') + urlObj.search;
+        
+        return {
+          providerName: providerName,
+          apiType: provider.apiType,
+          path: this.adjustProviderPath(apiPath, provider.baseUrl),
+          provider: provider
+        };
+      }
+    }
+    
+    // Backward compatibility - Legacy Gemini routes: /gemini/v1/* or /gemini/v1beta/*
     if (path.startsWith('/gemini/')) {
       const geminiPath = path.substring(7); // Remove '/gemini'
       if (geminiPath.startsWith('/v1/') || geminiPath.startsWith('/v1beta/')) {
@@ -150,14 +169,16 @@ class ProxyServer {
                                   baseUrl.includes('/v1/') || baseUrl.includes('/v1beta/');
         
         return {
+          providerName: 'gemini',
           apiType: 'gemini',
           // If base URL already has version, adjust path accordingly
-          path: baseUrlHasVersion ? this.adjustGeminiPath(geminiPath, baseUrl) + urlObj.search : geminiPath + urlObj.search
+          path: baseUrlHasVersion ? this.adjustGeminiPath(geminiPath, baseUrl) + urlObj.search : geminiPath + urlObj.search,
+          legacy: true
         };
       }
     }
     
-    // OpenAI routes: /openai/v1/*
+    // Backward compatibility - Legacy OpenAI routes: /openai/v1/*
     if (path.startsWith('/openai/')) {
       const openaiPath = path.substring(7); // Remove '/openai'
       if (openaiPath.startsWith('/v1/')) {
@@ -166,14 +187,33 @@ class ProxyServer {
         const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
         
         return {
+          providerName: 'openai',
           apiType: 'openai',
           // If base URL already has /v1, remove it from the path to avoid duplication
-          path: baseUrlHasV1 ? openaiPath.substring(3) + urlObj.search : openaiPath + urlObj.search
+          path: baseUrlHasV1 ? openaiPath.substring(3) + urlObj.search : openaiPath + urlObj.search,
+          legacy: true
         };
       }
     }
     
     return null;
+  }
+
+  adjustProviderPath(apiPath, baseUrl) {
+    // Handle path adjustments to avoid duplication
+    if (baseUrl.endsWith('/v1') && apiPath.startsWith('/v1/')) {
+      return apiPath.substring(3); // Remove /v1 from path
+    }
+    if (baseUrl.endsWith('/v1beta') && apiPath.startsWith('/v1beta/')) {
+      return apiPath.substring(7); // Remove /v1beta from path
+    }
+    if (baseUrl.includes('/v1/') && apiPath.startsWith('/v1/')) {
+      return apiPath.substring(3); // Remove /v1 from path
+    }
+    if (baseUrl.includes('/v1beta/') && apiPath.startsWith('/v1beta/')) {
+      return apiPath.substring(7); // Remove /v1beta from path
+    }
+    return apiPath; // No adjustment needed
   }
 
   adjustGeminiPath(geminiPath, baseUrl) {
@@ -191,6 +231,49 @@ class ProxyServer {
       return geminiPath.substring(7); // Remove /v1beta from path
     }
     return geminiPath; // No adjustment needed
+  }
+
+  async getProviderClient(providerName, provider, legacy = false) {
+    // Handle legacy clients
+    if (legacy) {
+      if (providerName === 'gemini' && this.geminiClient) {
+        return this.geminiClient;
+      }
+      if (providerName === 'openai' && this.openaiClient) {
+        return this.openaiClient;
+      }
+      return null;
+    }
+
+    // Check if we already have a client for this provider
+    if (this.providerClients.has(providerName)) {
+      return this.providerClients.get(providerName);
+    }
+
+    // Create new client for this provider
+    if (!provider) {
+      return null;
+    }
+
+    try {
+      const keyRotator = new this.KeyRotator(provider.keys, provider.apiType);
+      let client;
+
+      if (provider.apiType === 'openai') {
+        client = new this.OpenAIClient(keyRotator, provider.baseUrl);
+      } else if (provider.apiType === 'gemini') {
+        client = new this.GeminiClient(keyRotator, provider.baseUrl);
+      } else {
+        return null;
+      }
+
+      this.providerClients.set(providerName, client);
+      console.log(`[SERVER] Created client for provider '${providerName}' (${provider.apiType})`);
+      return client;
+    } catch (error) {
+      console.error(`[SERVER] Failed to create client for provider '${providerName}': ${error.message}`);
+      return null;
+    }
   }
 
   extractRelevantHeaders(headers, apiType) {
@@ -509,15 +592,15 @@ class ProxyServer {
   
   async handleTestApiKey(res, body) {
     try {
-      const { apiType, apiKey } = JSON.parse(body);
+      const { apiType, apiKey, baseUrl } = JSON.parse(body);
       let testResult = { success: false, error: 'Unknown API type' };
       
       if (apiType === 'gemini') {
-        // Test Gemini API key
-        testResult = await this.testGeminiKey(apiKey);
+        // Test Gemini API key with custom base URL if provided
+        testResult = await this.testGeminiKey(apiKey, baseUrl);
       } else if (apiType === 'openai') {
-        // Test OpenAI API key  
-        testResult = await this.testOpenaiKey(apiKey);
+        // Test OpenAI API key with custom base URL if provided
+        testResult = await this.testOpenaiKey(apiKey, baseUrl);
       }
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -527,31 +610,41 @@ class ProxyServer {
     }
   }
   
-  async testGeminiKey(apiKey) {
+  async testGeminiKey(apiKey, baseUrl = null) {
     const testId = Math.random().toString(36).substring(2, 11);
-    const baseUrl = this.config.getGeminiBaseUrl();
-    const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
-    const path = baseUrlHasV1 ? '/models' : '/v1/models';
-    const url = `${baseUrl}${baseUrl.endsWith('/') ? path.substring(1) : path}?key=${apiKey}`;
+    const testBaseUrl = baseUrl || 'https://generativelanguage.googleapis.com/v1';
+    
+    // Determine the correct path based on base URL
+    let testPath = '/models';
+    let fullUrl;
+    
+    if (testBaseUrl.includes('/v1') || testBaseUrl.includes('/v1beta')) {
+      // Base URL already includes version, just append models
+      fullUrl = `${testBaseUrl.endsWith('/') ? testBaseUrl.slice(0, -1) : testBaseUrl}/models?key=${apiKey}`;
+    } else {
+      // Base URL doesn't include version, add /v1/models
+      fullUrl = `${testBaseUrl.endsWith('/') ? testBaseUrl.slice(0, -1) : testBaseUrl}/v1/models?key=${apiKey}`;
+      testPath = '/v1/models';
+    }
     
     try {
-      const testResponse = await fetch(url);
+      const testResponse = await fetch(fullUrl);
       const responseText = await testResponse.text();
       const contentType = testResponse.headers.get('content-type') || 'unknown';
       
       // Single line log with compact info and response ID
-      const logMsg = `[TEST-${testId}] GET ${path} (Gemini) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
+      const logMsg = `[TEST-${testId}] GET ${testPath} (Gemini) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
       
       // Store response data for viewing
       this.storeResponseData(testId, {
         method: 'GET',
-        endpoint: path,
+        endpoint: testPath,
         apiType: 'Gemini',
         status: testResponse.status,
         statusText: testResponse.statusText,
         contentType: contentType,
         responseData: responseText,
-        requestBody: null // GET requests don't have body
+        requestBody: null
       });
       
       console.log(logMsg);
@@ -559,28 +652,33 @@ class ProxyServer {
       
       return { 
         success: testResponse.ok, 
-        error: testResponse.ok ? null : 'Invalid API key or network error' 
+        error: testResponse.ok ? null : `API test failed: ${testResponse.status} ${testResponse.statusText}` 
       };
     } catch (error) {
-      const baseUrl = this.config.getGeminiBaseUrl();
-      const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
-      const path = baseUrlHasV1 ? '/models' : '/v1/models';
-      const logMsg = `[TEST-${testId}] GET ${path} (Gemini) → ERROR: ${error.message}`;
+      const logMsg = `[TEST-${testId}] GET ${testPath} (Gemini) → ERROR: ${error.message}`;
       console.log(logMsg);
       this.logApiRequest(logMsg);
       return { success: false, error: error.message };
     }
   }
   
-  async testOpenaiKey(apiKey) {
+  async testOpenaiKey(apiKey, baseUrl = null) {
     const testId = Math.random().toString(36).substring(2, 11);
-    const baseUrl = this.config.getOpenaiBaseUrl();
-    const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
-    const path = baseUrlHasV1 ? '/models' : '/v1/models';
-    const url = `${baseUrl}${baseUrl.endsWith('/') ? path.substring(1) : path}`;
+    const testBaseUrl = baseUrl || 'https://api.openai.com/v1';
+    
+    // Construct the full URL - just append /models to the base URL
+    const fullUrl = `${testBaseUrl.endsWith('/') ? testBaseUrl.slice(0, -1) : testBaseUrl}/models`;
+    
+    // Determine display path for logging
+    let testPath = '/models';
+    if (testBaseUrl.includes('/openai/v1')) {
+      testPath = '/openai/v1/models';
+    } else if (testBaseUrl.includes('/v1')) {
+      testPath = '/v1/models';
+    }
     
     try {
-      const testResponse = await fetch(url, {
+      const testResponse = await fetch(fullUrl, {
         headers: { 'Authorization': `Bearer ${apiKey}` }
       });
       
@@ -588,18 +686,18 @@ class ProxyServer {
       const contentType = testResponse.headers.get('content-type') || 'unknown';
       
       // Single line log with compact info and response ID
-      const logMsg = `[TEST-${testId}] GET ${path} (OpenAI) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
+      const logMsg = `[TEST-${testId}] GET ${testPath} (OpenAI) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
       
       // Store response data for viewing
       this.storeResponseData(testId, {
         method: 'GET',
-        endpoint: path,
+        endpoint: testPath,
         apiType: 'OpenAI',
         status: testResponse.status,
         statusText: testResponse.statusText,
         contentType: contentType,
         responseData: responseText,
-        requestBody: null // GET requests don't have body
+        requestBody: null
       });
       
       console.log(logMsg);
@@ -607,13 +705,10 @@ class ProxyServer {
       
       return { 
         success: testResponse.ok, 
-        error: testResponse.ok ? null : 'Invalid API key or network error' 
+        error: testResponse.ok ? null : `API test failed: ${testResponse.status} ${testResponse.statusText}` 
       };
     } catch (error) {
-      const baseUrl = this.config.getOpenaiBaseUrl();
-      const baseUrlHasV1 = baseUrl.endsWith('/v1') || baseUrl.includes('/v1/');
-      const path = baseUrlHasV1 ? '/models' : '/v1/models';
-      const logMsg = `[TEST-${testId}] GET ${path} (OpenAI) → ERROR: ${error.message}`;
+      const logMsg = `[TEST-${testId}] GET ${testPath} (OpenAI) → ERROR: ${error.message}`;
       console.log(logMsg);
       this.logApiRequest(logMsg);
       return { success: false, error: error.message };
@@ -701,25 +796,29 @@ class ProxyServer {
   reinitializeClients() {
     console.log('[SERVER] Reinitializing API clients with updated configuration...');
     
-    // Reinitialize Gemini client if keys are available
+    // Clear all provider clients
+    this.providerClients.clear();
+    
+    // Reinitialize legacy clients for backward compatibility
     if (this.config.hasGeminiKeys()) {
       const geminiKeyRotator = new this.KeyRotator(this.config.getGeminiApiKeys(), 'gemini');
       this.geminiClient = new this.GeminiClient(geminiKeyRotator, this.config.getGeminiBaseUrl());
-      console.log('[SERVER] Gemini client reinitialized');
+      console.log('[SERVER] Legacy Gemini client reinitialized');
     } else {
       this.geminiClient = null;
-      console.log('[SERVER] Gemini client disabled (no keys available)');
+      console.log('[SERVER] Legacy Gemini client disabled (no keys available)');
     }
     
-    // Reinitialize OpenAI client if keys are available
     if (this.config.hasOpenaiKeys()) {
       const openaiKeyRotator = new this.KeyRotator(this.config.getOpenaiApiKeys(), 'openai');
       this.openaiClient = new this.OpenAIClient(openaiKeyRotator, this.config.getOpenaiBaseUrl());
-      console.log('[SERVER] OpenAI client reinitialized');
+      console.log('[SERVER] Legacy OpenAI client reinitialized');
     } else {
       this.openaiClient = null;
-      console.log('[SERVER] OpenAI client disabled (no keys available)');
+      console.log('[SERVER] Legacy OpenAI client disabled (no keys available)');
     }
+    
+    console.log(`[SERVER] ${this.config.getProviders().size} providers available for dynamic initialization`);
   }
 
   stop() {

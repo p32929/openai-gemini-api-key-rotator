@@ -8,25 +8,29 @@ function main() {
   try {
     const config = new Config();
     
+    // Initialize legacy clients for backward compatibility
     let geminiClient = null;
     let openaiClient = null;
     
-    // Initialize Gemini client if keys are available
     if (config.hasGeminiKeys()) {
       const geminiKeyRotator = new KeyRotator(config.getGeminiApiKeys(), 'gemini');
       geminiClient = new GeminiClient(geminiKeyRotator, config.getGeminiBaseUrl());
-      console.log('[INIT] Gemini client initialized');
+      console.log('[INIT] Legacy Gemini client initialized');
     } else if (config.hasAdminPassword()) {
-      console.log('[INIT] No Gemini keys found - can be configured via admin panel');
+      console.log('[INIT] No legacy Gemini keys found - can be configured via admin panel');
     }
     
-    // Initialize OpenAI client if keys are available
     if (config.hasOpenaiKeys()) {
       const openaiKeyRotator = new KeyRotator(config.getOpenaiApiKeys(), 'openai');
       openaiClient = new OpenAIClient(openaiKeyRotator, config.getOpenaiBaseUrl());
-      console.log('[INIT] OpenAI client initialized');
+      console.log('[INIT] Legacy OpenAI client initialized');
     } else if (config.hasAdminPassword()) {
-      console.log('[INIT] No OpenAI keys found - can be configured via admin panel');
+      console.log('[INIT] No legacy OpenAI keys found - can be configured via admin panel');
+    }
+    
+    // Check if we have at least one provider configured or admin panel enabled
+    if (config.getProviders().size === 0 && !config.hasAdminPassword()) {
+      throw new Error('No providers configured and no admin password set. Please configure at least one provider or set ADMIN_PASSWORD.');
     }
     
     const server = new ProxyServer(config, geminiClient, openaiClient);
