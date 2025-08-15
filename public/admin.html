@@ -398,11 +398,8 @@
                     </nav>
                     
                     <!-- Header Notifications Area -->
-                    <div id="headerNotifications" class="flex items-center space-x-2 py-2 max-w-md overflow-hidden">
-                        <div id="notificationStatus" class="text-xs text-muted-foreground hidden">
-                            <span id="notificationCount">0</span> notifications
-                        </div>
-                        <div id="latestNotification" class="flex items-center space-x-2 text-xs px-2 py-1 rounded-md transition-all duration-300 max-w-xs hidden">
+                    <div id="headerNotifications" class="py-2 max-w-md overflow-hidden">
+                        <div id="latestNotification" class="flex items-center space-x-2 text-xs px-2 py-1 rounded-md border transition-all duration-300 max-w-xs hidden">
                             <div id="latestIcon" class="flex-shrink-0"></div>
                             <span id="latestMessage" class="truncate flex-1"></span>
                             <button onclick="clearLatestNotification()" class="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5" title="Dismiss">
@@ -706,9 +703,6 @@
                 notifications = notifications.slice(0, MAX_NOTIFICATIONS);
             }
             
-            // Update header display
-            updateHeaderNotifications();
-            
             // Show current notification
             showLatestNotification(notification);
             
@@ -723,17 +717,8 @@
         }
         
         function updateHeaderNotifications() {
-            const notificationCount = document.getElementById('notificationCount');
-            const notificationStatus = document.getElementById('notificationStatus');
-            
-            if (notificationCount && notificationStatus) {
-                notificationCount.textContent = notifications.length;
-                if (notifications.length > 0) {
-                    notificationStatus.classList.remove('hidden');
-                } else {
-                    notificationStatus.classList.add('hidden');
-                }
-            }
+            // Just keep notifications array updated for potential future use
+            // No visual updates needed since we only show the latest notification
         }
         
         function showLatestNotification(notification) {
@@ -768,7 +753,6 @@
             if (currentNotification) {
                 // Remove from array
                 notifications = notifications.filter(n => n.id !== currentNotification.id);
-                updateHeaderNotifications();
             }
             hideLatestNotification();
         }
@@ -777,7 +761,6 @@
         function hideToast(id) {
             // Remove from array
             notifications = notifications.filter(n => n.id !== id);
-            updateHeaderNotifications();
             
             // Hide if it's the current one
             if (currentNotification && currentNotification.id === id) {
