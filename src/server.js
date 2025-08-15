@@ -56,13 +56,11 @@ class ProxyServer {
   async handleRequest(req, res) {
     const requestId = Math.random().toString(36).substring(2, 11);
     const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const startTime = Date.now();
     
     // Only log to file for API calls, always log to console
     const isApiCall = this.parseRoute(req.url) !== null;
     console.log(`[REQ-${requestId}] ${req.method} ${req.url} from ${clientIp}`);
-    if (isApiCall) {
-      this.logApiRequest(`[REQ-${requestId}] ${req.method} ${req.url} from ${clientIp}`);
-    }
     
     try {
       const body = await this.readRequestBody(req);
@@ -85,13 +83,23 @@ class ProxyServer {
       if (!routeInfo) {
         console.log(`[REQ-${requestId}] Invalid path: ${req.url}`);
         console.log(`[REQ-${requestId}] Response: 400 Bad Request - Invalid API path`);
+        
+        if (isApiCall) {
+          const responseTime = Date.now() - startTime;
+          this.logApiRequest(requestId, req.method, req.url, 'unknown', 400, responseTime, 'Invalid API path', clientIp);
+        }
+        
         this.sendError(res, 400, 'Invalid API path. Use /{provider}/v1/* format');
         return;
       }
 
       const { providerName, apiType, path, provider, legacy } = routeInfo;
       console.log(`[REQ-${requestId}] Proxying to provider '${providerName}' (${apiType.toUpperCase()}): ${path}`);
-      this.logApiRequest(`[REQ-${requestId}] Proxying to provider '${providerName}' (${apiType.toUpperCase()}): ${path}`);
+      
+      // Log the initial request
+      if (isApiCall) {
+        this.logApiRequest(requestId, req.method, path, providerName, null, null, null, clientIp);
+      }
       
       const headers = this.extractRelevantHeaders(req.headers, apiType);
       let response;
@@ -100,22 +108,36 @@ class ProxyServer {
       const client = await this.getProviderClient(providerName, provider, legacy);
       if (!client) {
         console.log(`[REQ-${requestId}] Response: 503 Service Unavailable - Provider '${providerName}' not configured`);
-        this.logApiRequest(`[REQ-${requestId}] Response: 503 Service Unavailable - Provider '${providerName}' not configured`);
+        
+        if (isApiCall) {
+          const responseTime = Date.now() - startTime;
+          this.logApiRequest(requestId, req.method, path, providerName, 503, responseTime, `Provider '${providerName}' not configured`, clientIp);
+        }
+        
         this.sendError(res, 503, `Provider '${providerName}' not configured`);
         return;
       }
       
       response = await client.makeRequest(req.method, path, body, headers);
       
+      // Log the successful response
+      if (isApiCall) {
+        const responseTime = Date.now() - startTime;
+        const error = response.statusCode >= 400 ? `HTTP ${response.statusCode}` : null;
+        this.logApiRequest(requestId, req.method, path, providerName, response.statusCode, responseTime, error, clientIp);
+      }
+      
       this.logApiResponse(requestId, response, body);
       this.sendResponse(res, response);
     } catch (error) {
       console.log(`[REQ-${requestId}] Request handling error: ${error.message}`);
       console.log(`[REQ-${requestId}] Response: 500 Internal Server Error`);
+      
       if (isApiCall) {
-        this.logApiRequest(`[REQ-${requestId}] Request handling error: ${error.message}`);
-        this.logApiRequest(`[REQ-${requestId}] Response: 500 Internal Server Error`);
+        const responseTime = Date.now() - startTime;
+        this.logApiRequest(requestId, req.method, req.url, 'unknown', 500, responseTime, error.message, clientIp);
       }
+      
       this.sendError(res, 500, 'Internal server error');
     }
   }
@@ -342,38 +364,33 @@ class ProxyServer {
       requestBody: requestBody
     });
     
-    // Log basic response info (both console and file)
+    // Log basic response info to console only (structured logging handled in handleRequest)
     const responseMsg = `[REQ-${requestId}] Response: ${response.statusCode} ${this.getStatusText(response.statusCode)}`;
     const contentMsg = `[REQ-${requestId}] Content-Type: ${contentType}, Size: ${contentLength} bytes`;
     
     console.log(responseMsg);
     console.log(contentMsg);
-    this.logApiRequest(responseMsg);
-    this.logApiRequest(contentMsg);
     
-    // For error responses, log the error details
+    // For error responses, log the error details to console
     if (response.statusCode >= 400) {
       try {
         const errorData = JSON.parse(response.data);
         if (errorData.error) {
           const errorMsg = `[REQ-${requestId}] Error: ${errorData.error.message || errorData.error.code || 'Unknown error'}`;
           console.log(errorMsg);
-          this.logApiRequest(errorMsg);
         }
       } catch (e) {
         // If response is not JSON, log first 200 chars of response
         const errorText = response.data ? response.data.toString().substring(0, 200) : 'No error details';
         const errorMsg = `[REQ-${requestId}] Error details: ${errorText}`;
         console.log(errorMsg);
-        this.logApiRequest(errorMsg);
       }
     }
     
-    // For successful responses, log basic success info
+    // For successful responses, log basic success info to console
     if (response.statusCode >= 200 && response.statusCode < 300) {
       const successMsg = `[REQ-${requestId}] Request completed successfully`;
       console.log(successMsg);
-      this.logApiRequest(successMsg);
     }
   }
 
@@ -613,6 +630,7 @@ class ProxyServer {
   async testGeminiKey(apiKey, baseUrl = null) {
     const testId = Math.random().toString(36).substring(2, 11);
     const testBaseUrl = baseUrl || 'https://generativelanguage.googleapis.com/v1';
+    const startTime = Date.now();
     
     // Determine the correct path based on base URL
     let testPath = '/models';
@@ -631,9 +649,7 @@ class ProxyServer {
       const testResponse = await fetch(fullUrl);
       const responseText = await testResponse.text();
       const contentType = testResponse.headers.get('content-type') || 'unknown';
-      
-      // Single line log with compact info and response ID
-      const logMsg = `[TEST-${testId}] GET ${testPath} (Gemini) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
+      const responseTime = Date.now() - startTime;
       
       // Store response data for viewing
       this.storeResponseData(testId, {
@@ -647,17 +663,22 @@ class ProxyServer {
         requestBody: null
       });
       
-      console.log(logMsg);
-      this.logApiRequest(logMsg);
+      // Log with structured format
+      const error = !testResponse.ok ? `API test failed: ${testResponse.status} ${testResponse.statusText}` : null;
+      this.logApiRequest(testId, 'GET', testPath, 'gemini', testResponse.status, responseTime, error, 'admin-test');
+      
+      console.log(`[TEST-${testId}] GET ${testPath} (Gemini) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`);
       
       return { 
         success: testResponse.ok, 
-        error: testResponse.ok ? null : `API test failed: ${testResponse.status} ${testResponse.statusText}` 
+        error: error
       };
     } catch (error) {
-      const logMsg = `[TEST-${testId}] GET ${testPath} (Gemini) → ERROR: ${error.message}`;
-      console.log(logMsg);
-      this.logApiRequest(logMsg);
+      const responseTime = Date.now() - startTime;
+      
+      console.log(`[TEST-${testId}] GET ${testPath} (Gemini) → ERROR: ${error.message}`);
+      this.logApiRequest(testId, 'GET', testPath, 'gemini', null, responseTime, error.message, 'admin-test');
+      
       return { success: false, error: error.message };
     }
   }
@@ -665,6 +686,7 @@ class ProxyServer {
   async testOpenaiKey(apiKey, baseUrl = null) {
     const testId = Math.random().toString(36).substring(2, 11);
     const testBaseUrl = baseUrl || 'https://api.openai.com/v1';
+    const startTime = Date.now();
     
     // Construct the full URL - just append /models to the base URL
     const fullUrl = `${testBaseUrl.endsWith('/') ? testBaseUrl.slice(0, -1) : testBaseUrl}/models`;
@@ -684,9 +706,7 @@ class ProxyServer {
       
       const responseText = await testResponse.text();
       const contentType = testResponse.headers.get('content-type') || 'unknown';
-      
-      // Single line log with compact info and response ID
-      const logMsg = `[TEST-${testId}] GET ${testPath} (OpenAI) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`;
+      const responseTime = Date.now() - startTime;
       
       // Store response data for viewing
       this.storeResponseData(testId, {
@@ -700,27 +720,86 @@ class ProxyServer {
         requestBody: null
       });
       
-      console.log(logMsg);
-      this.logApiRequest(logMsg);
+      // Log with structured format
+      const error = !testResponse.ok ? `API test failed: ${testResponse.status} ${testResponse.statusText}` : null;
+      this.logApiRequest(testId, 'GET', testPath, 'openai', testResponse.status, responseTime, error, 'admin-test');
+      
+      console.log(`[TEST-${testId}] GET ${testPath} (OpenAI) → ${testResponse.status} ${testResponse.statusText} | ${contentType} ${responseText.length}b`);
       
       return { 
         success: testResponse.ok, 
-        error: testResponse.ok ? null : `API test failed: ${testResponse.status} ${testResponse.statusText}` 
+        error: error
       };
     } catch (error) {
-      const logMsg = `[TEST-${testId}] GET ${testPath} (OpenAI) → ERROR: ${error.message}`;
-      console.log(logMsg);
-      this.logApiRequest(logMsg);
+      const responseTime = Date.now() - startTime;
+      
+      console.log(`[TEST-${testId}] GET ${testPath} (OpenAI) → ERROR: ${error.message}`);
+      this.logApiRequest(testId, 'GET', testPath, 'openai', null, responseTime, error.message, 'admin-test');
+      
       return { success: false, error: error.message };
     }
   }
   
   async handleGetLogs(res) {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      logs: this.logBuffer,
-      fileLoggingEnabled: this.fileLoggingEnabled 
-    }));
+    try {
+      // Load logs from file
+      const fileLogs = this.loadLogsFromFile();
+      
+      // Combine file logs with current buffer
+      const allLogs = [...fileLogs, ...this.logBuffer];
+      
+      // Keep only last 100 entries and ensure they're properly formatted
+      const recentLogs = allLogs.slice(-100).map(log => {
+        // Handle both old string format and new object format
+        if (typeof log === 'string') {
+          // Parse old string format: "2024-01-15T10:30:45.123Z [REQ-abc123] POST /endpoint"
+          const match = log.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+(.*)$/);
+          if (match) {
+            return {
+              timestamp: match[1],
+              requestId: 'legacy',
+              method: 'UNKNOWN',
+              endpoint: 'unknown',
+              provider: 'unknown',
+              status: null,
+              responseTime: null,
+              error: null,
+              clientIp: null,
+              message: match[2] // Keep original message for backward compatibility
+            };
+          }
+          return {
+            timestamp: new Date().toISOString(),
+            requestId: 'unknown',
+            method: 'UNKNOWN',
+            endpoint: 'unknown',
+            provider: 'unknown',
+            status: null,
+            responseTime: null,
+            error: null,
+            clientIp: null,
+            message: log
+          };
+        }
+        return log; // Already an object
+      });
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        logs: recentLogs,
+        fileLoggingEnabled: this.fileLoggingEnabled,
+        totalEntries: recentLogs.length,
+        format: 'json' // Indicate the new format
+      }));
+    } catch (error) {
+      console.error('Failed to get logs:', error.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        error: 'Failed to retrieve logs',
+        logs: [],
+        fileLoggingEnabled: this.fileLoggingEnabled 
+      }));
+    }
   }
   
   async handleToggleLogging(res, body) {
@@ -735,20 +814,107 @@ class ProxyServer {
     }
   }
   
-  logApiRequest(message) {
+  logApiRequest(requestId, method, endpoint, provider, status = null, responseTime = null, error = null, clientIp = null) {
     if (this.fileLoggingEnabled) {
-      const timestamp = new Date().toISOString();
-      const logEntry = `${timestamp} ${message}`;
+      const logEntry = {
+        timestamp: new Date().toISOString(),
+        requestId: requestId || 'unknown',
+        method: method || 'UNKNOWN',
+        endpoint: endpoint || 'unknown',
+        provider: provider || 'unknown',
+        status: status,
+        responseTime: responseTime,
+        error: error,
+        clientIp: clientIp
+      };
       
-      // Add to buffer (keep last 1000 entries)
+      // Add to buffer (keep last 100 entries)
       this.logBuffer.push(logEntry);
-      if (this.logBuffer.length > 1000) {
+      if (this.logBuffer.length > 100) {
         this.logBuffer.shift();
       }
       
-      // Write to file
-      const logPath = path.join(process.cwd(), 'proxy.log');
-      fs.appendFileSync(logPath, logEntry + '\n');
+      // Save to JSON file periodically (every 10 entries to avoid too frequent writes)
+      if (this.logBuffer.length % 10 === 0) {
+        this.saveLogsToFile();
+      }
+    }
+  }
+
+  
+  // Helper method for backward compatibility - converts old string calls to new structured calls
+  logApiRequestLegacy(message) {
+    // Parse message to extract structured data
+    const timestamp = new Date().toISOString();
+    
+    // Extract request ID if present
+    const reqIdMatch = message.match(/\[REQ-([^\]]+)\]/);
+    const requestId = reqIdMatch ? reqIdMatch[1] : 'unknown';
+    
+    // Extract method and endpoint
+    const methodMatch = message.match(/(GET|POST|PUT|DELETE|PATCH)\s+([^\s]+)/);
+    const method = methodMatch ? methodMatch[1] : 'UNKNOWN';
+    const endpoint = methodMatch ? methodMatch[2] : 'unknown';
+    
+    // Extract provider
+    let provider = 'unknown';
+    if (message.includes('OpenAI')) provider = 'openai';
+    else if (message.includes('Gemini')) provider = 'gemini';
+    else if (message.includes('groq')) provider = 'groq';
+    else if (message.includes('openrouter')) provider = 'openrouter';
+    
+    // Extract status code
+    const statusMatch = message.match(/(\d{3})\s+/);
+    const status = statusMatch ? parseInt(statusMatch[1]) : null;
+    
+    // Extract error information
+    const error = message.includes('error') || message.includes('Error') || status >= 400 ? message : null;
+    
+    this.logApiRequest(requestId, method, endpoint, provider, status, null, error, null);
+  }
+
+  // Add this new method after logApiRequest
+  saveLogsToFile() {
+    try {
+      const logPath = path.join(process.cwd(), 'proxy-logs.json');
+      
+      // Read existing logs
+      let existingLogs = [];
+      if (fs.existsSync(logPath)) {
+        const fileContent = fs.readFileSync(logPath, 'utf8');
+        if (fileContent.trim()) {
+          existingLogs = JSON.parse(fileContent);
+        }
+      }
+      
+      // Combine existing logs with current buffer
+      const allLogs = [...existingLogs, ...this.logBuffer];
+      
+      // Keep only last 100 entries
+      const trimmedLogs = allLogs.slice(-100);
+      
+      // Write back to file with formatting
+      fs.writeFileSync(logPath, JSON.stringify(trimmedLogs, null, 2));
+      
+    } catch (error) {
+      console.error('Failed to save logs to file:', error.message);
+    }
+  }
+
+  // Add this new method after saveLogsToFile
+  loadLogsFromFile() {
+    try {
+      const logPath = path.join(process.cwd(), 'proxy-logs.json');
+      if (fs.existsSync(logPath)) {
+        const fileContent = fs.readFileSync(logPath, 'utf8');
+        if (fileContent.trim()) {
+          return JSON.parse(fileContent);
+        }
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to load logs from file:', error.message);
+      return [];
     }
   }
 

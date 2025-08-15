@@ -528,7 +528,7 @@
                             </label>
                         </div>
                         <p class="text-muted-foreground text-xs">
-                            Enable file logging to save all LLM API requests to a log file. Only OpenAI and Gemini API calls are logged. Logs are also kept in memory (last 1000 entries).
+                            Enable file logging to save all LLM API requests to a JSON log file. All API provider calls are logged with structured data. Logs are also kept in memory (last 100 entries).
                         </p>
                     </div>
 
@@ -1764,24 +1764,68 @@
                     return;
                 }
                 
-                // Process logs to add view buttons for entries with stored data
-                const processedLogs = data.logs.map(log => {
-                    // Check if this is a TEST log entry
-                    const testMatch = log.match(/\[TEST-([a-zA-Z0-9]+)\]/);
-                    if (testMatch) {
-                        const testId = testMatch[1];
-                        return log + ` <button onclick="viewResponse('${testId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
-                    }
-                    
-                    // Check if this is a REQ log entry
-                    const reqMatch = log.match(/\[REQ-([a-zA-Z0-9]+)\]/);
-                    if (reqMatch) {
-                        const requestId = reqMatch[1];
-                        return log + ` <button onclick="viewResponse('${requestId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
-                    }
-                    
-                    return log;
-                }).join('\n');
+                // Check if we're receiving the new JSON format
+                const isJsonFormat = data.format === 'json' || (data.logs.length > 0 && typeof data.logs[0] === 'object');
+                
+                let processedLogs;
+                
+                if (isJsonFormat) {
+                    // New JSON format - create formatted display
+                    processedLogs = data.logs.map(log => {
+                        if (typeof log === 'string') {
+                            // Legacy string format - display as is with view button if possible
+                            const testMatch = log.match(/\[TEST-([a-zA-Z0-9]+)\]/);
+                            const reqMatch = log.match(/\[REQ-([a-zA-Z0-9]+)\]/);
+                            if (testMatch) {
+                                const testId = testMatch[1];
+                                return log + ` <button onclick="viewResponse('${testId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
+                            } else if (reqMatch) {
+                                const requestId = reqMatch[1];
+                                return log + ` <button onclick="viewResponse('${requestId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
+                            }
+                            return log;
+                        } else {
+                            // New JSON format - create structured display
+                            const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                            const status = log.status ? `(${log.status})` : '';
+                            const responseTime = log.responseTime ? `${log.responseTime}ms` : '';
+                            const error = log.error ? ` ERROR: ${log.error}` : '';
+                            
+                            // Color coding based on status
+                            let statusColor = 'text-green-400';
+                            if (log.status >= 400) {
+                                statusColor = 'text-red-400';
+                            } else if (log.status >= 300) {
+                                statusColor = 'text-yellow-400';
+                            }
+                            
+                            const logLine = `<span class="text-gray-400">${timestamp}</span> <span class="text-blue-400">[${log.requestId}]</span> <span class="text-white">${log.method} ${log.endpoint}</span> <span class="text-cyan-400">(${log.provider})</span> <span class="${statusColor}">${status}</span> <span class="text-gray-400">${responseTime}</span><span class="text-red-400">${error}</span>`;
+                            
+                            // Add view button if we have detailed response data
+                            if (log.requestId && log.requestId !== 'unknown') {
+                                return logLine + ` <button onclick="viewResponse('${log.requestId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
+                            }
+                            return logLine;
+                        }
+                    }).join('\n');
+                } else {
+                    // Legacy string format - old processing
+                    processedLogs = data.logs.map(log => {
+                        const testMatch = log.match(/\[TEST-([a-zA-Z0-9]+)\]/);
+                        if (testMatch) {
+                            const testId = testMatch[1];
+                            return log + ` <button onclick="viewResponse('${testId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
+                        }
+                        
+                        const reqMatch = log.match(/\[REQ-([a-zA-Z0-9]+)\]/);
+                        if (reqMatch) {
+                            const requestId = reqMatch[1];
+                            return log + ` <button onclick="viewResponse('${requestId}')" class="ml-2 text-blue-400 hover:text-blue-300 underline cursor-pointer text-xs">View Details</button>`;
+                        }
+                        
+                        return log;
+                    }).join('\n');
+                }
                 
                 logsContainer.innerHTML = processedLogs || 'No logs available';
                 
