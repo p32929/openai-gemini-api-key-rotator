@@ -373,28 +373,46 @@
         <!-- Navigation Tabs -->
         <div class="header-bg border-b border-border">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <nav class="flex space-x-6">
-                    <button 
-                        onclick="showTab('environment')" 
-                        class="tab-btn py-3 px-2 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors active flex items-center space-x-2"
-                        data-tab="environment"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
-                        <span class="text-sm">API Keys</span>
-                    </button>
-                    <button 
-                        onclick="showTab('logs')" 
-                        class="tab-btn py-3 px-2 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors flex items-center space-x-2"
-                        data-tab="logs"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        <span class="text-sm">API Logs</span>
-                    </button>
-                </nav>
+                <div class="flex items-center justify-between">
+                    <nav class="flex space-x-6">
+                        <button 
+                            onclick="showTab('environment')" 
+                            class="tab-btn py-3 px-2 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors active flex items-center space-x-2"
+                            data-tab="environment"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z" />
+                            </svg>
+                            <span class="text-sm">API Keys</span>
+                        </button>
+                        <button 
+                            onclick="showTab('logs')" 
+                            class="tab-btn py-3 px-2 border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors flex items-center space-x-2"
+                            data-tab="logs"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            <span class="text-sm">API Logs</span>
+                        </button>
+                    </nav>
+                    
+                    <!-- Header Notifications Area -->
+                    <div id="headerNotifications" class="flex items-center space-x-2 py-2 max-w-md overflow-hidden">
+                        <div id="notificationStatus" class="text-xs text-muted-foreground hidden">
+                            <span id="notificationCount">0</span> notifications
+                        </div>
+                        <div id="latestNotification" class="flex items-center space-x-2 text-xs px-2 py-1 rounded-md transition-all duration-300 max-w-xs hidden">
+                            <div id="latestIcon" class="flex-shrink-0"></div>
+                            <span id="latestMessage" class="truncate flex-1"></span>
+                            <button onclick="clearLatestNotification()" class="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5" title="Dismiss">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -619,112 +637,156 @@
         </div>
     </div>
 
-    <!-- Toast Notifications Container -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-md"></div>
+
 
     <script>
         let envVars = {};
         
-        // Toast notification system
+        // Header-integrated notification system
+        let notifications = [];
+        let notificationId = 0;
+        const MAX_NOTIFICATIONS = 20;
+        let currentNotification = null;
+        
         function showToast(message, type = 'info', duration = 4000) {
-            const container = document.getElementById('toastContainer');
-            const toastId = 'toast_' + Date.now();
+            const timestamp = new Date();
+            const id = ++notificationId;
             
-            // Create toast element
-            const toast = document.createElement('div');
-            toast.id = toastId;
-            toast.className = `transform transition-all duration-300 ease-in-out translate-x-full opacity-0 max-w-md min-w-80 w-auto bg-card shadow-lg rounded-lg pointer-events-auto border border-border`;
-            
-            // Define toast styles and icons based on type
+            // Define notification styles and icons based on type
             let bgColor, textColor, iconSvg;
             switch (type) {
                 case 'success':
-                    bgColor = 'bg-green-50 dark:bg-green-900/20';
+                    bgColor = 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
                     textColor = 'text-green-800 dark:text-green-200';
-                    iconSvg = `<svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    iconSvg = `<svg class="w-3 h-3 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>`;
                     break;
                 case 'error':
-                    bgColor = 'bg-red-50 dark:bg-red-900/20';
+                    bgColor = 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
                     textColor = 'text-red-800 dark:text-red-200';
-                    iconSvg = `<svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    iconSvg = `<svg class="w-3 h-3 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>`;
                     break;
                 case 'warning':
-                    bgColor = 'bg-yellow-50 dark:bg-yellow-900/20';
+                    bgColor = 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
                     textColor = 'text-yellow-800 dark:text-yellow-200';
-                    iconSvg = `<svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    iconSvg = `<svg class="w-3 h-3 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                     </svg>`;
                     break;
                 case 'info':
                 default:
-                    bgColor = 'bg-blue-50 dark:bg-blue-900/20';
+                    bgColor = 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
                     textColor = 'text-blue-800 dark:text-blue-200';
-                    iconSvg = `<svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    iconSvg = `<svg class="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>`;
                     break;
             }
             
-            toast.innerHTML = `
-                <div class="flex p-4 ${bgColor} rounded-lg">
-                    <div class="flex-shrink-0">
-                        ${iconSvg}
-                    </div>
-                    <div class="ml-3 flex-1 min-w-0">
-                        <p class="text-sm font-medium ${textColor} break-words">
-                            ${message}
-                        </p>
-                    </div>
-                    <div class="ml-4 flex-shrink-0">
-                        <button 
-                            onclick="hideToast('${toastId}')"
-                            class="bg-transparent rounded-md inline-flex ${textColor} hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-offset-2 p-1"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            `;
+            // Create notification object
+            const notification = {
+                id: id,
+                message: message,
+                type: type,
+                timestamp: timestamp,
+                bgColor: bgColor,
+                textColor: textColor,
+                iconSvg: iconSvg,
+                duration: duration
+            };
             
-            container.appendChild(toast);
+            // Add to array (newest first)
+            notifications.unshift(notification);
             
-            // Animate in
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full', 'opacity-0');
-                toast.classList.add('translate-x-0', 'opacity-100');
-            }, 100);
+            // Limit notifications
+            if (notifications.length > MAX_NOTIFICATIONS) {
+                notifications = notifications.slice(0, MAX_NOTIFICATIONS);
+            }
+            
+            // Update header display
+            updateHeaderNotifications();
+            
+            // Show current notification
+            showLatestNotification(notification);
             
             // Auto-hide after duration
             if (duration > 0) {
                 setTimeout(() => {
-                    hideToast(toastId);
+                    hideLatestNotification();
                 }, duration);
             }
             
-            return toastId;
+            return id;
         }
         
-        function hideToast(toastId) {
-            const toast = document.getElementById(toastId);
-            if (toast) {
-                toast.classList.add('translate-x-full', 'opacity-0');
-                toast.classList.remove('translate-x-0', 'opacity-100');
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
-                    }
-                }, 300);
+        function updateHeaderNotifications() {
+            const notificationCount = document.getElementById('notificationCount');
+            const notificationStatus = document.getElementById('notificationStatus');
+            
+            if (notificationCount && notificationStatus) {
+                notificationCount.textContent = notifications.length;
+                if (notifications.length > 0) {
+                    notificationStatus.classList.remove('hidden');
+                } else {
+                    notificationStatus.classList.add('hidden');
+                }
+            }
+        }
+        
+        function showLatestNotification(notification) {
+            const latestNotification = document.getElementById('latestNotification');
+            const latestIcon = document.getElementById('latestIcon');
+            const latestMessage = document.getElementById('latestMessage');
+            
+            if (latestNotification && latestIcon && latestMessage) {
+                currentNotification = notification;
+                
+                // Set content
+                latestIcon.innerHTML = notification.iconSvg;
+                latestMessage.textContent = notification.message;
+                
+                // Apply styles
+                latestNotification.className = `flex items-center space-x-2 text-xs px-2 py-1 rounded-md border transition-all duration-300 max-w-xs ${notification.bgColor} ${notification.textColor}`;
+                
+                // Show
+                latestNotification.classList.remove('hidden');
+            }
+        }
+        
+        function hideLatestNotification() {
+            const latestNotification = document.getElementById('latestNotification');
+            if (latestNotification) {
+                latestNotification.classList.add('hidden');
+                currentNotification = null;
+            }
+        }
+        
+        function clearLatestNotification() {
+            if (currentNotification) {
+                // Remove from array
+                notifications = notifications.filter(n => n.id !== currentNotification.id);
+                updateHeaderNotifications();
+            }
+            hideLatestNotification();
+        }
+        
+        // Legacy function for compatibility
+        function hideToast(id) {
+            // Remove from array
+            notifications = notifications.filter(n => n.id !== id);
+            updateHeaderNotifications();
+            
+            // Hide if it's the current one
+            if (currentNotification && currentNotification.id === id) {
+                hideLatestNotification();
             }
         }
         
         // Convenience functions
-        function showSuccessToast(message, duration = 4000) {
+        function showSuccessToast(message, duration = 3000) {
             return showToast(message, 'success', duration);
         }
         
@@ -736,7 +798,7 @@
             return showToast(message, 'warning', duration);
         }
         
-        function showInfoToast(message, duration = 4000) {
+        function showInfoToast(message, duration = 3000) {
             return showToast(message, 'info', duration);
         }
         
