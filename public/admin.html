@@ -566,7 +566,7 @@
     </div>
 
     <!-- Single Notification Overlay -->
-    <div id="singleNotification" class="fixed bg-card border border-border rounded-md shadow-lg z-[150] transition-all duration-300 hidden" style="top: 120px; right: 20px; min-width: 400px; max-width: 600px;">
+    <div id="singleNotification" class="fixed bg-card border border-border rounded-md shadow-lg z-[150] transition-all duration-300 hidden" style="top: 140px; right: 20px; min-width: 400px; max-width: 600px;">
         <div class="flex items-center space-x-3 px-4 py-3">
             <div id="singleIcon" class="flex-shrink-0"></div>
             <span id="singleMessage" class="flex-1 text-sm"></span>
@@ -580,7 +580,7 @@
     </div>
 
     <!-- Expanded Notifications Overlay -->
-    <div id="expandedNotifications" class="fixed bg-card border border-border rounded-md shadow-xl z-[200] min-w-96 max-w-2xl hidden" style="top: 120px; right: 20px;">
+    <div id="expandedNotifications" class="fixed bg-card border border-border rounded-md shadow-xl z-[200] min-w-96 max-w-2xl hidden" style="top: 140px; right: 20px;">
         <div class="max-h-80 overflow-y-auto">
             <div id="allNotificationsList" class="space-y-1 p-3">
                 <!-- Notifications will be populated here -->
@@ -806,24 +806,22 @@
         }
         
         function positionNotifications() {
-            const headerNotifications = document.getElementById('headerNotifications');
+            // Notifications are now fixed positioned relative to the sticky header
+            // They stay in the same spot in the viewport regardless of scroll
             const singleNotification = document.getElementById('singleNotification');
             const expandedNotifications = document.getElementById('expandedNotifications');
             
-            if (!headerNotifications || !singleNotification) return;
+            if (!singleNotification || !expandedNotifications) return;
             
-            const rect = headerNotifications.getBoundingClientRect();
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            // Fixed position below the sticky header (header ~72px + nav ~68px = ~140px)
+            const topPosition = '140px';
+            const rightPosition = '20px';
             
-            // Position both overlays
-            const top = rect.bottom + scrollTop + 5;
-            const right = window.innerWidth - rect.right;
+            singleNotification.style.top = topPosition;
+            singleNotification.style.right = rightPosition;
             
-            singleNotification.style.top = top + 'px';
-            singleNotification.style.right = right + 'px';
-            
-            expandedNotifications.style.top = top + 'px';
-            expandedNotifications.style.right = right + 'px';
+            expandedNotifications.style.top = topPosition;
+            expandedNotifications.style.right = rightPosition;
         }
         
 
