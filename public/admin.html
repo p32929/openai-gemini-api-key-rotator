@@ -424,8 +424,8 @@
                     </nav>
                     
                     <!-- Header Notifications Area -->
-                    <div id="headerNotifications" class="py-2 max-w-md overflow-hidden">
-                        <div id="latestNotification" class="flex items-center space-x-2 text-xs px-2 py-1 rounded-md border transition-all duration-300 max-w-xs hidden">
+                    <div id="headerNotifications" class="py-2 ml-6 flex-1 max-w-2xl overflow-hidden">
+                        <div id="latestNotification" class="flex items-center space-x-2 text-xs px-3 py-2 rounded-md border transition-all duration-300 w-full hidden">
                             <div id="latestIcon" class="flex-shrink-0"></div>
                             <span id="latestMessage" class="truncate flex-1"></span>
                             <button onclick="clearLatestNotification()" class="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5" title="Dismiss">
@@ -748,7 +748,7 @@
                 latestMessage.textContent = notification.message;
                 
                 // Apply styles
-                latestNotification.className = `flex items-center space-x-2 text-xs px-2 py-1 rounded-md border transition-all duration-300 max-w-xs ${notification.bgColor} ${notification.textColor}`;
+                latestNotification.className = `flex items-center space-x-2 text-xs px-3 py-2 rounded-md border transition-all duration-300 w-full ${notification.bgColor} ${notification.textColor}`;
                 
                 // Show
                 latestNotification.classList.remove('hidden');
