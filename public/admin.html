@@ -533,23 +533,10 @@
                 </div>
 
                 <div class="space-y-4">
-                    <!-- File Logging Settings -->
-                    <div class="section">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-sm font-medium text-foreground">File Logging</h3>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="loggingToggle" class="sr-only peer" onchange="toggleLogging()">
-                                <div class="w-9 h-5 bg-red-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
-                            </label>
-                        </div>
-                        <p class="text-muted-foreground text-xs">
-                            Enable file logging to save all LLM API requests to a JSON log file. All API provider calls are logged with structured data. Logs are also kept in memory (last 100 entries).
-                        </p>
-                    </div>
 
                     <!-- Logs Display -->
                     <div class="section">
-                        <h3 class="text-sm font-medium text-foreground mb-3">Recent API Requests</h3>
+                        <h3 class="text-sm font-medium text-foreground mb-3">Recent API Requests (Last 100 - RAM only)</h3>
                         <div class="bg-gray-900 border border-border rounded">
                             <div id="logsContainer" class="text-green-400 p-3 font-mono text-xs h-80 overflow-y-auto whitespace-pre-wrap"></div>
                         </div>
@@ -874,8 +861,6 @@
         let originalValues = {};
         
         function renderEnvVars() {
-            // Load file logging status
-            document.getElementById('loggingToggle').checked = envVars.FILE_LOGGING === 'true';
             
             // Render providers
             renderProviders();
@@ -1770,33 +1755,11 @@
             try {
                 const response = await fetch('/admin/api/logs');
                 const data = await response.json();
-                document.getElementById('loggingToggle').checked = data.fileLoggingEnabled;
             } catch (error) {
                 console.error('Failed to load logging status:', error);
             }
         }
         
-        async function toggleLogging() {
-            const enabled = document.getElementById('loggingToggle').checked;
-            
-            try {
-                // Update the environment variable
-                envVars.FILE_LOGGING = enabled ? 'true' : 'false';
-                
-                // Send to server
-                await fetch('/admin/api/logging', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled })
-                });
-                
-                // Save the updated env vars
-                await saveEnvVars();
-            } catch (error) {
-                console.error('Failed to toggle logging:', error);
-                document.getElementById('loggingToggle').checked = !enabled;
-            }
-        }
         
         async function refreshLogs() {
             try {

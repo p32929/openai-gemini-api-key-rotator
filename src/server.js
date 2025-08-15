@@ -12,8 +12,7 @@ class ProxyServer {
     this.providerClients = new Map(); // Map of provider_name -> client instance
     this.server = null;
     this.adminSessionToken = null;
-    this.fileLoggingEnabled = this.getFileLoggingStatus();
-    this.logBuffer = [];
+    this.logBuffer = []; // Store logs in RAM only (last 100 entries)
     this.responseStorage = new Map(); // Store response data for viewing
     
     // Store required classes for reinitialization
@@ -489,8 +488,6 @@ class ProxyServer {
       await this.handleTestApiKey(res, body);
     } else if (path === '/admin/api/logs' && req.method === 'GET') {
       await this.handleGetLogs(res);
-    } else if (path === '/admin/api/logging' && req.method === 'POST') {
-      await this.handleToggleLogging(res, body);
     } else if (path.startsWith('/admin/api/response/') && req.method === 'GET') {
       await this.handleGetResponse(res, path);
     } else {
@@ -570,16 +567,6 @@ class ProxyServer {
     }
   }
   
-  getFileLoggingStatus() {
-    try {
-      const envPath = path.join(process.cwd(), '.env');
-      const envContent = fs.readFileSync(envPath, 'utf8');
-      const envVars = this.config.parseEnvFile(envContent);
-      return envVars.FILE_LOGGING === 'true';
-    } catch (error) {
-      return false;
-    }
-  }
   
   async handleUpdateEnvVars(res, body) {
     try {
@@ -610,10 +597,6 @@ class ProxyServer {
       
       fs.writeFileSync(envPath, envContent);
       
-      // Update file logging status if it changed
-      if (finalEnvVars.FILE_LOGGING !== undefined) {
-        this.fileLoggingEnabled = finalEnvVars.FILE_LOGGING === 'true';
-      }
       
       // Reload configuration
       this.config.loadConfig();
@@ -763,14 +746,8 @@ class ProxyServer {
   
   async handleGetLogs(res) {
     try {
-      // Load logs from file
-      const fileLogs = this.loadLogsFromFile();
-      
-      // Combine file logs with current buffer
-      const allLogs = [...fileLogs, ...this.logBuffer];
-      
-      // Keep only last 100 entries and ensure they're properly formatted
-      const recentLogs = allLogs.slice(-100).map(log => {
+      // Return logs from memory buffer only (last 100 entries)
+      const recentLogs = this.logBuffer.slice(-100).map(log => {
         // Handle both old string format and new object format
         if (typeof log === 'string') {
           // Parse old string format: "2024-01-15T10:30:45.123Z [REQ-abc123] POST /endpoint"
@@ -808,7 +785,6 @@ class ProxyServer {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ 
         logs: recentLogs,
-        fileLoggingEnabled: this.fileLoggingEnabled,
         totalEntries: recentLogs.length,
         format: 'json' // Indicate the new format
       }));
@@ -817,48 +793,29 @@ class ProxyServer {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ 
         error: 'Failed to retrieve logs',
-        logs: [],
-        fileLoggingEnabled: this.fileLoggingEnabled 
+        logs: []
       }));
     }
   }
   
-  async handleToggleLogging(res, body) {
-    try {
-      const { enabled } = JSON.parse(body);
-      this.fileLoggingEnabled = enabled;
-      
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, fileLoggingEnabled: this.fileLoggingEnabled }));
-    } catch (error) {
-      this.sendError(res, 500, 'Failed to toggle logging');
-    }
-  }
   
   logApiRequest(requestId, method, endpoint, provider, status = null, responseTime = null, error = null, clientIp = null) {
-    if (this.fileLoggingEnabled) {
-      const logEntry = {
-        timestamp: new Date().toISOString(),
-        requestId: requestId || 'unknown',
-        method: method || 'UNKNOWN',
-        endpoint: endpoint || 'unknown',
-        provider: provider || 'unknown',
-        status: status,
-        responseTime: responseTime,
-        error: error,
-        clientIp: clientIp
-      };
-      
-      // Add to buffer (keep last 100 entries)
-      this.logBuffer.push(logEntry);
-      if (this.logBuffer.length > 100) {
-        this.logBuffer.shift();
-      }
-      
-      // Save to JSON file periodically (every 10 entries to avoid too frequent writes)
-      if (this.logBuffer.length % 10 === 0) {
-        this.saveLogsToFile();
-      }
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      requestId: requestId || 'unknown',
+      method: method || 'UNKNOWN',
+      endpoint: endpoint || 'unknown',
+      provider: provider || 'unknown',
+      status: status,
+      responseTime: responseTime,
+      error: error,
+      clientIp: clientIp
+    };
+    
+    // Add to buffer (keep last 100 entries in RAM only)
+    this.logBuffer.push(logEntry);
+    if (this.logBuffer.length > 100) {
+      this.logBuffer.shift();
     }
   }
 
@@ -894,50 +851,6 @@ class ProxyServer {
     this.logApiRequest(requestId, method, endpoint, provider, status, null, error, null);
   }
 
-  // Add this new method after logApiRequest
-  saveLogsToFile() {
-    try {
-      const logPath = path.join(process.cwd(), 'proxy-logs.json');
-      
-      // Read existing logs
-      let existingLogs = [];
-      if (fs.existsSync(logPath)) {
-        const fileContent = fs.readFileSync(logPath, 'utf8');
-        if (fileContent.trim()) {
-          existingLogs = JSON.parse(fileContent);
-        }
-      }
-      
-      // Combine existing logs with current buffer
-      const allLogs = [...existingLogs, ...this.logBuffer];
-      
-      // Keep only last 100 entries
-      const trimmedLogs = allLogs.slice(-100);
-      
-      // Write back to file with formatting
-      fs.writeFileSync(logPath, JSON.stringify(trimmedLogs, null, 2));
-      
-    } catch (error) {
-      console.error('Failed to save logs to file:', error.message);
-    }
-  }
-
-  // Add this new method after saveLogsToFile
-  loadLogsFromFile() {
-    try {
-      const logPath = path.join(process.cwd(), 'proxy-logs.json');
-      if (fs.existsSync(logPath)) {
-        const fileContent = fs.readFileSync(logPath, 'utf8');
-        if (fileContent.trim()) {
-          return JSON.parse(fileContent);
-        }
-      }
-      return [];
-    } catch (error) {
-      console.error('Failed to load logs from file:', error.message);
-      return [];
-    }
-  }
 
   storeResponseData(testId, responseData) {
     // Store response data for viewing (keep last 100 responses)
