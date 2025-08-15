@@ -78,7 +78,7 @@ http://localhost:8990/openrouter/v1/*
 2. **Intelligent Key Selection**: Avoids recently failed keys using smart shuffling
 3. **Automatic Failover**: On rate limits, instantly tries the next available key
 4. **Graceful Handling**: Returns proper errors when all keys are exhausted
-5. **RAM-based Logging**: Keeps last 100 API requests in memory for real-time monitoring
+5. **Memory-based Logging**: Keeps last 100 API requests in memory for real-time monitoring
 
 ## 📊 Popular API Providers
 
