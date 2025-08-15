@@ -423,17 +423,9 @@
                         </button>
                     </nav>
                     
-                    <!-- Header Notifications Area -->
-                    <div id="headerNotifications" class="py-2 ml-6 flex-1 max-w-2xl overflow-hidden">
-                        <div id="latestNotification" class="flex items-center space-x-2 text-xs px-3 py-2 rounded-md border transition-all duration-300 w-full hidden">
-                            <div id="latestIcon" class="flex-shrink-0"></div>
-                            <span id="latestMessage" class="truncate flex-1"></span>
-                            <button onclick="clearLatestNotification()" class="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5" title="Dismiss">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        </div>
+                    <!-- Header Notifications Area (placeholder for positioning) -->
+                    <div id="headerNotifications" class="py-2 ml-6 flex-1 max-w-2xl overflow-hidden relative">
+                        <!-- Placeholder for positioning calculations -->
                     </div>
                 </div>
             </div>
@@ -573,6 +565,35 @@
         </main>
     </div>
 
+    <!-- Single Notification Overlay -->
+    <div id="singleNotification" class="fixed bg-card border border-border rounded-md shadow-lg z-[150] transition-all duration-300 hidden" style="top: 120px; right: 20px; min-width: 400px; max-width: 600px;">
+        <div class="flex items-center space-x-3 px-4 py-3">
+            <div id="singleIcon" class="flex-shrink-0"></div>
+            <span id="singleMessage" class="flex-1 text-sm"></span>
+            <span id="notificationCount" class="flex-shrink-0 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium hidden">+2</span>
+            <button onclick="clearCurrentNotification()" class="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1" title="Dismiss">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Expanded Notifications Overlay -->
+    <div id="expandedNotifications" class="fixed bg-card border border-border rounded-md shadow-xl z-[200] min-w-96 max-w-2xl hidden" style="top: 120px; right: 20px;">
+        <div class="max-h-80 overflow-y-auto">
+            <div id="allNotificationsList" class="space-y-1 p-3">
+                <!-- Notifications will be populated here -->
+            </div>
+        </div>
+        <div class="border-t border-border p-3 flex justify-between items-center">
+            <span class="text-xs text-muted-foreground" id="queueStatus">All notifications</span>
+            <button onclick="clearAllNotifications()" class="btn btn-secondary px-2 py-1 text-xs">
+                Clear All
+            </button>
+        </div>
+    </div>
+
     <!-- Confirmation Dialog -->
     <div id="confirmDialog" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-card border border-border rounded-lg p-6 max-w-md w-full shadow-xl">
@@ -654,10 +675,10 @@
         let envVars = {};
         
         // Header-integrated notification system
-        let notifications = [];
+        let activeNotifications = [];
         let notificationId = 0;
         const MAX_NOTIFICATIONS = 20;
-        let currentNotification = null;
+        let notificationTimeouts = new Map();
         
         function showToast(message, type = 'info', duration = 4000) {
             const timestamp = new Date();
@@ -669,21 +690,21 @@
                 case 'success':
                     bgColor = 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
                     textColor = 'text-green-800 dark:text-green-200';
-                    iconSvg = `<svg class="w-3 h-3 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    iconSvg = `<svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>`;
                     break;
                 case 'error':
                     bgColor = 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
                     textColor = 'text-red-800 dark:text-red-200';
-                    iconSvg = `<svg class="w-3 h-3 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    iconSvg = `<svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>`;
                     break;
                 case 'warning':
                     bgColor = 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
                     textColor = 'text-yellow-800 dark:text-yellow-200';
-                    iconSvg = `<svg class="w-3 h-3 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    iconSvg = `<svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                     </svg>`;
                     break;
@@ -691,7 +712,7 @@
                 default:
                     bgColor = 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
                     textColor = 'text-blue-800 dark:text-blue-200';
-                    iconSvg = `<svg class="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    iconSvg = `<svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>`;
                     break;
@@ -709,66 +730,163 @@
                 duration: duration
             };
             
-            // Add to array (newest first)
-            notifications.unshift(notification);
+            // Add to active notifications
+            activeNotifications.push(notification);
             
             // Limit notifications
-            if (notifications.length > MAX_NOTIFICATIONS) {
-                notifications = notifications.slice(0, MAX_NOTIFICATIONS);
+            if (activeNotifications.length > MAX_NOTIFICATIONS) {
+                // Remove oldest notification
+                const oldestId = activeNotifications.shift().id;
+                hideNotification(oldestId);
             }
             
-            // Show current notification
-            showLatestNotification(notification);
+            // Show immediately
+            updateNotificationDisplay();
             
             // Auto-hide after duration
             if (duration > 0) {
-                setTimeout(() => {
-                    hideLatestNotification();
+                const timeout = setTimeout(() => {
+                    hideNotification(id);
                 }, duration);
+                notificationTimeouts.set(id, timeout);
             }
             
             return id;
         }
         
-        function updateHeaderNotifications() {
-            // Just keep notifications array updated for potential future use
-            // No visual updates needed since we only show the latest notification
-        }
-        
-        function showLatestNotification(notification) {
-            const latestNotification = document.getElementById('latestNotification');
-            const latestIcon = document.getElementById('latestIcon');
-            const latestMessage = document.getElementById('latestMessage');
+        function updateNotificationDisplay() {
+            // Show single notification or count
+            const singleNotification = document.getElementById('singleNotification');
+            const singleIcon = document.getElementById('singleIcon');
+            const singleMessage = document.getElementById('singleMessage');
+            const notificationCount = document.getElementById('notificationCount');
             
-            if (latestNotification && latestIcon && latestMessage) {
-                currentNotification = notification;
+            if (activeNotifications.length === 0) {
+                singleNotification.classList.add('hidden');
+                return;
+            }
+            
+            // Show the latest notification
+            const latest = activeNotifications[activeNotifications.length - 1];
+            singleIcon.innerHTML = latest.iconSvg;
+            singleMessage.textContent = latest.message;
+            
+            // Apply styles
+            const container = singleNotification.querySelector('div');
+            container.className = `flex items-center space-x-3 px-4 py-3 ${latest.bgColor} ${latest.textColor}`;
+            
+            // Show count if there are multiple
+            if (activeNotifications.length > 1) {
+                notificationCount.textContent = `+${activeNotifications.length - 1}`;
+                notificationCount.classList.remove('hidden');
+            } else {
+                notificationCount.classList.add('hidden');
+            }
+            
+            // Position and show
+            positionNotifications();
+            singleNotification.classList.remove('hidden');
+            
+            // Update expanded view
+            updateExpandedNotifications();
+        }
+        
+        function hideNotification(id) {
+            // Remove from active notifications
+            activeNotifications = activeNotifications.filter(n => n.id !== id);
+            
+            // Clear timeout
+            if (notificationTimeouts.has(id)) {
+                clearTimeout(notificationTimeouts.get(id));
+                notificationTimeouts.delete(id);
+            }
+            
+            // Update display
+            updateNotificationDisplay();
+        }
+        
+        function positionNotifications() {
+            const headerNotifications = document.getElementById('headerNotifications');
+            const singleNotification = document.getElementById('singleNotification');
+            const expandedNotifications = document.getElementById('expandedNotifications');
+            
+            if (!headerNotifications || !singleNotification) return;
+            
+            const rect = headerNotifications.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Position both overlays
+            const top = rect.bottom + scrollTop + 5;
+            const right = window.innerWidth - rect.right;
+            
+            singleNotification.style.top = top + 'px';
+            singleNotification.style.right = right + 'px';
+            
+            expandedNotifications.style.top = top + 'px';
+            expandedNotifications.style.right = right + 'px';
+        }
+        
+
+        
+        function updateExpandedNotifications() {
+            const allNotificationsList = document.getElementById('allNotificationsList');
+            const queueStatus = document.getElementById('queueStatus');
+            
+            if (!allNotificationsList) return;
+            
+            // Clear existing content
+            allNotificationsList.innerHTML = '';
+            
+            // Add all active notifications (newest first)
+            const reversedNotifications = [...activeNotifications].reverse();
+            reversedNotifications.forEach((notification, index) => {
+                const div = document.createElement('div');
+                div.className = `flex items-center space-x-3 text-sm px-3 py-2 rounded border ${notification.bgColor} ${notification.textColor}`;
                 
-                // Set content
-                latestIcon.innerHTML = notification.iconSvg;
-                latestMessage.textContent = notification.message;
-                
-                // Apply styles
-                latestNotification.className = `flex items-center space-x-2 text-xs px-3 py-2 rounded-md border transition-all duration-300 w-full ${notification.bgColor} ${notification.textColor}`;
-                
-                // Show
-                latestNotification.classList.remove('hidden');
+                // Add dismiss button for each notification
+                div.innerHTML = `
+                    ${notification.iconSvg}
+                    <span class="flex-1">${notification.message}</span>
+                    <span class="text-xs opacity-75">${new Date(notification.timestamp).toLocaleTimeString()}</span>
+                    <button onclick="hideNotification(${notification.id})" class="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1" title="Dismiss">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                `;
+                allNotificationsList.appendChild(div);
+            });
+            
+            // Update status
+            if (queueStatus) {
+                if (activeNotifications.length === 0) {
+                    queueStatus.textContent = 'No notifications';
+                } else if (activeNotifications.length === 1) {
+                    queueStatus.textContent = '1 active notification';
+                } else {
+                    queueStatus.textContent = `${activeNotifications.length} active notifications`;
+                }
             }
         }
         
-        function hideLatestNotification() {
-            const latestNotification = document.getElementById('latestNotification');
-            if (latestNotification) {
-                latestNotification.classList.add('hidden');
-                currentNotification = null;
+        function clearCurrentNotification() {
+            if (activeNotifications.length > 0) {
+                // Remove the latest notification
+                const latest = activeNotifications[activeNotifications.length - 1];
+                hideNotification(latest.id);
             }
         }
         
-        function clearLatestNotification() {
-            if (currentNotification) {
-                // Remove from array
-                notifications = notifications.filter(n => n.id !== currentNotification.id);
-            }
-            hideLatestNotification();
+        function clearAllNotifications() {
+            // Clear all timeouts
+            notificationTimeouts.forEach(timeout => clearTimeout(timeout));
+            notificationTimeouts.clear();
+            
+            // Clear all notifications
+            activeNotifications = [];
+            
+            // Update display
+            updateNotificationDisplay();
         }
         
         // Legacy function for compatibility
@@ -2037,6 +2155,49 @@
             }
         }
         
+        // Setup notification hover functionality
+        function setupNotificationHover() {
+            const headerNotifications = document.getElementById('headerNotifications');
+            const singleNotification = document.getElementById('singleNotification');
+            const expandedNotifications = document.getElementById('expandedNotifications');
+            
+            if (!headerNotifications || !singleNotification || !expandedNotifications) return;
+            
+            let hoverTimeout;
+            
+            // Show expanded view on hover
+            const showExpanded = () => {
+                clearTimeout(hoverTimeout);
+                // Only show expanded view if there are notifications
+                if (activeNotifications.length > 0) {
+                    updateExpandedNotifications();
+                    positionNotifications();
+                    expandedNotifications.classList.remove('hidden');
+                }
+            };
+            
+            headerNotifications.addEventListener('mouseenter', showExpanded);
+            singleNotification.addEventListener('mouseenter', showExpanded);
+            
+            // Hide expanded view on leave with small delay
+            headerNotifications.addEventListener('mouseleave', () => {
+                hoverTimeout = setTimeout(() => {
+                    expandedNotifications.classList.add('hidden');
+                }, 200); // Small delay to prevent flickering
+            });
+            
+            // Keep expanded view open if hovering over it
+            expandedNotifications.addEventListener('mouseenter', () => {
+                clearTimeout(hoverTimeout);
+            });
+            
+            expandedNotifications.addEventListener('mouseleave', () => {
+                hoverTimeout = setTimeout(() => {
+                    expandedNotifications.classList.add('hidden');
+                }, 200);
+            });
+        }
+        
         // Fix sticky header positioning
         function adjustStickyHeaderPositioning() {
             const header = document.querySelector('header.sticky-header');
@@ -2079,6 +2240,9 @@
             
             // Re-adjust on window resize
             window.addEventListener('resize', adjustStickyHeaderPositioning);
+            
+            // Setup notification hover functionality
+            setupNotificationHover();
             
             // Check if user is already authenticated
             checkAuth();
