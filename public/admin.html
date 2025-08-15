@@ -656,7 +656,8 @@
                 <button 
                     id="requestTab"
                     onclick="switchResponseTab('request')" 
-                    class="px-4 py-2 rounded-md text-sm font-medium btn-secondary hidden"
+                    class="px-4 py-2 rounded-md text-sm font-medium btn-secondary hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
                 >
                     Request Body
                 </button>
@@ -1923,8 +1924,38 @@
                 let processedLogs;
                 
                 if (isJsonFormat) {
+                    // Deduplicate logs more aggressively
+                    const seenRequests = new Map();
+                    const uniqueLogs = [];
+                    
+                    for (const log of data.logs) {
+                        let key;
+                        if (typeof log === 'object' && log.requestId) {
+                            // For objects with requestId, use only requestId as the key
+                            // This ensures we only show each request once
+                            key = log.requestId;
+                        } else if (typeof log === 'string') {
+                            // Extract requestId from string format logs
+                            const reqIdMatch = log.match(/\[([a-zA-Z0-9]+)\]/);
+                            if (reqIdMatch) {
+                                key = reqIdMatch[1];
+                            } else {
+                                // Use the entire string as key if no ID found
+                                key = log;
+                            }
+                        } else {
+                            // Fallback to stringified object
+                            key = JSON.stringify(log);
+                        }
+                        
+                        if (!seenRequests.has(key)) {
+                            seenRequests.set(key, true);
+                            uniqueLogs.push(log);
+                        }
+                    }
+                    
                     // New JSON format - create formatted display
-                    processedLogs = data.logs.map(log => {
+                    processedLogs = uniqueLogs.map(log => {
                         if (typeof log === 'string') {
                             // Legacy string format - display as is with view button if possible
                             const testMatch = log.match(/\[TEST-([a-zA-Z0-9]+)\]/);
@@ -1962,8 +1993,23 @@
                         }
                     }).join('\n');
                 } else {
+                    // Legacy string format - deduplicate based on request ID
+                    const seenIds = new Set();
+                    const uniqueLogs = [];
+                    
+                    for (const log of data.logs) {
+                        // Extract any ID from the log string
+                        const idMatch = log.match(/\[([a-zA-Z0-9]+)\]/);
+                        const logId = idMatch ? idMatch[1] : log;
+                        
+                        if (!seenIds.has(logId)) {
+                            seenIds.add(logId);
+                            uniqueLogs.push(log);
+                        }
+                    }
+                    
                     // Legacy string format - old processing
-                    processedLogs = data.logs.map(log => {
+                    processedLogs = uniqueLogs.map(log => {
                         const testMatch = log.match(/\[TEST-([a-zA-Z0-9]+)\]/);
                         if (testMatch) {
                             const testId = testMatch[1];
@@ -2020,8 +2066,11 @@
                 const requestContent = document.getElementById('requestContent');
                 
                 if (data.requestBody && data.requestBody.trim()) {
-                    // Show request tab if there's a request body
+                    // Show and enable request tab if there's a request body
                     requestTab.classList.remove('hidden');
+                    requestTab.disabled = false;
+                    requestTab.title = '';
+                    requestTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-secondary';
                     
                     // Format request body
                     let formattedRequest;
@@ -2034,8 +2083,12 @@
                     
                     requestContent.textContent = formattedRequest;
                 } else {
-                    // Hide request tab if no request body
-                    requestTab.classList.add('hidden');
+                    // Show but disable request tab if no request body
+                    requestTab.classList.remove('hidden');
+                    requestTab.disabled = true;
+                    requestTab.title = 'No request body available';
+                    requestTab.className = 'px-4 py-2 rounded-md text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50';
+                    requestContent.textContent = 'No request body data available for this request.';
                 }
                 
                 // Start with response tab active
@@ -2054,14 +2107,22 @@
             const responseContent = document.getElementById('responseContent');
             const requestContent = document.getElementById('requestContent');
             
+            // Don't switch if request tab is disabled and trying to switch to it
+            if (tab === 'request' && requestTab.disabled) {
+                return;
+            }
+            
             if (tab === 'response') {
                 // Activate response tab
                 responseTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-primary';
-                requestTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-secondary';
+                // Only update request tab style if it's not disabled
+                if (!requestTab.disabled) {
+                    requestTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-secondary';
+                }
                 responseContent.classList.remove('hidden');
                 requestContent.classList.add('hidden');
             } else {
-                // Activate request tab
+                // Activate request tab (only reachable if not disabled)
                 requestTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-primary';
                 responseTab.className = 'px-4 py-2 rounded-md text-sm font-medium btn-secondary';
                 requestContent.classList.remove('hidden');
