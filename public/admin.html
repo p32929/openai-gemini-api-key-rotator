@@ -199,6 +199,32 @@
             border-bottom: 1px solid var(--border);
         }
         
+        /* Sticky header */
+        .sticky-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background-color: var(--card);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .sticky-nav-tabs {
+            position: fixed;
+            top: 72px; /* Position below main header */
+            left: 0;
+            right: 0;
+            z-index: 99;
+            background-color: var(--card);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        /* Content offset for sticky header */
+        .content-with-sticky-header {
+            margin-top: 130px; /* Use margin instead of padding for better spacing */
+        }
+        
         /* Tab styles */
         .tab-btn {
             position: relative;
@@ -331,7 +357,7 @@
     <!-- Admin Panel -->
     <div id="adminPanel" class="hidden min-h-screen">
         <!-- Header -->
-        <header class="header-bg">
+        <header class="header-bg sticky-header">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center py-3">
                     <div class="flex items-center space-x-3">
@@ -371,7 +397,7 @@
         </header>
 
         <!-- Navigation Tabs -->
-        <div class="header-bg border-b border-border">
+        <div id="navigationTabs" class="header-bg border-b border-border sticky-nav-tabs">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between">
                     <nav class="flex space-x-6">
@@ -414,7 +440,7 @@
         </div>
 
         <!-- Main Content -->
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 content-with-sticky-header">
             <!-- Environment Tab -->
             <div id="environment" class="tab-content">
                 <div class="section-header">
@@ -821,6 +847,8 @@
                     document.getElementById('adminPanel').classList.remove('hidden');
                     loadEnvVars();
                     loadLoggingStatus();
+                    // Fix header positioning after panel is shown
+                    setTimeout(adjustStickyHeaderPositioning, 100);
                 } else {
                     errorDiv.textContent = 'Invalid password';
                     errorDiv.classList.remove('hidden');
@@ -2001,9 +2029,34 @@
                     document.getElementById('adminPanel').classList.remove('hidden');
                     loadEnvVars();
                     loadLoggingStatus();
+                    // Fix header positioning after panel is shown
+                    setTimeout(adjustStickyHeaderPositioning, 100);
                 }
             } catch (error) {
                 console.log('Auth check failed, showing login form');
+            }
+        }
+        
+        // Fix sticky header positioning
+        function adjustStickyHeaderPositioning() {
+            const header = document.querySelector('header.sticky-header');
+            const navTabs = document.getElementById('navigationTabs');
+            const mainContent = document.querySelector('.content-with-sticky-header');
+            
+            if (header && navTabs && mainContent) {
+                const headerHeight = header.offsetHeight;
+                const navTabsHeight = navTabs.offsetHeight;
+                const totalHeight = headerHeight + navTabsHeight;
+                
+                console.log('Header height:', headerHeight);
+                console.log('Nav tabs height:', navTabsHeight);
+                console.log('Total height:', totalHeight);
+                
+                // Position nav tabs below the header
+                navTabs.style.top = headerHeight + 'px';
+                
+                // Add margin to main content to account for both elements
+                mainContent.style.marginTop = (totalHeight + 20) + 'px';
             }
         }
         
@@ -2020,6 +2073,12 @@
             
             // Initialize provider preview
             updateProviderPreview();
+            
+            // Fix sticky header positioning
+            adjustStickyHeaderPositioning();
+            
+            // Re-adjust on window resize
+            window.addEventListener('resize', adjustStickyHeaderPositioning);
             
             // Check if user is already authenticated
             checkAuth();
