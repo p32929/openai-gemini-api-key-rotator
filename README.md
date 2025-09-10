@@ -68,7 +68,7 @@ http://localhost:8990/openrouter/v1/*
 
 <img width="3024" height="1714" alt="Image" src="https://github.com/user-attachments/assets/f265cc8f-941e-43e4-998e-c713dacfd248" />
 
-<img width="3024" height="1714" alt="Image" src="https://github.com/user-attachments/assets/c905e424-07d0-4a29-9e84-b053fa909c2f" />
+<img width="1920" height="2908" alt="Image" src="https://github.com/user-attachments/assets/11e828a2-2827-4f5f-9c53-7e400577509a" />
 
 <img width="3024" height="1714" alt="Image" src="https://github.com/user-attachments/assets/0de6654d-eea8-49ad-9c19-7f2a799b604e" />
 
