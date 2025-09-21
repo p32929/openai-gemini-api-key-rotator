@@ -478,12 +478,12 @@
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-muted-foreground mb-2">Provider Name</label>
-                                    <input 
-                                        type="text" 
-                                        id="newProviderName" 
-                                        class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors" 
+                                    <input
+                                        type="text"
+                                        id="newProviderName"
+                                        class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors"
                                         placeholder="e.g., groq, together (leave empty for default)"
-                                        oninput="updateProviderPreview()"
+                                        oninput="handleProviderNameInput(this); updateProviderPreview()"
                                     >
                                     <p class="text-muted-foreground text-xs mt-1">Leave empty for default provider, or provide both name and base URL for custom provider</p>
                                 </div>
@@ -1051,10 +1051,14 @@
             
             for (const [key, value] of Object.entries(envVars)) {
                 if (key.endsWith('_API_KEYS') && value) {
-                    const match = key.match(/^(.+)_(.+)_API_KEYS$/);
-                    if (match && match.length >= 3) {
-                        const apiType = match[1].toLowerCase();
-                        const providerName = match[2].toLowerCase();
+                    // First try to match the pattern APITYPE_PROVIDERNAME_API_KEYS
+                    // We need to split only on the FIRST underscore to preserve provider names with underscores
+                    const keyWithoutSuffix = key.replace('_API_KEYS', '');
+                    const firstUnderscoreIndex = keyWithoutSuffix.indexOf('_');
+
+                    if (firstUnderscoreIndex > 0) {
+                        const apiType = keyWithoutSuffix.substring(0, firstUnderscoreIndex).toLowerCase();
+                        const providerName = keyWithoutSuffix.substring(firstUnderscoreIndex + 1).toLowerCase();
                         const providerKey = `${apiType}_${providerName}`;
                         
                         if (!providers[providerKey]) {
@@ -1094,20 +1098,30 @@
                 providerDiv.innerHTML = `
                     <div class="space-y-3">
                         <div class="flex items-center justify-between">
-                            <div>
+                            <div id="provider-name-${provider.apiType}-${provider.name}">
                                 <h4 class="text-sm font-medium text-foreground">${provider.name}</h4>
                                 <p class="text-xs text-muted-foreground">${provider.apiType.toUpperCase()} Compatible • ${provider.keys.length} keys</p>
                             </div>
                             <div class="flex items-center space-x-2">
-                                <button 
-                                    onclick="copyProviderCurl('${provider.apiType}', '${provider.name}')" 
+                                <button
+                                    onclick="startRenameProvider('${provider.apiType}', '${provider.name}')"
+                                    class="btn btn-secondary px-2 py-1 text-xs font-medium"
+                                    title="Rename provider"
+                                >
+                                    <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                    Rename
+                                </button>
+                                <button
+                                    onclick="copyProviderCurl('${provider.apiType}', '${provider.name}')"
                                     class="btn btn-secondary px-2 py-1 text-xs font-medium"
                                     title="Copy cURL test command"
                                 >
                                     📋 Copy cURL
                                 </button>
-                                <button 
-                                    onclick="showDeleteProviderConfirmation('${provider.apiType}', '${provider.name}')" 
+                                <button
+                                    onclick="showDeleteProviderConfirmation('${provider.apiType}', '${provider.name}')"
                                     class="text-destructive hover:text-destructive/80 transition-colors p-1"
                                     title="Delete Provider"
                                 >
@@ -1833,6 +1847,164 @@
             dialog.classList.remove('hidden');
         }
         
+        // Rename provider functionality
+        function startRenameProvider(apiType, providerName) {
+            const nameDiv = document.getElementById(`provider-name-${apiType}-${providerName}`);
+            if (!nameDiv) return;
+
+            const currentName = providerName;
+
+            // Create inline edit form
+            nameDiv.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <input
+                        type="text"
+                        id="rename-input-${apiType}-${providerName}"
+                        value="${currentName}"
+                        class="px-2 py-1 text-sm border border-border rounded bg-input text-foreground"
+                        style="width: 150px;"
+                        oninput="handleProviderNameInput(this)"
+                        onkeydown="handleRenameKeyPress(event, '${apiType}', '${providerName}')"
+                    />
+                    <button
+                        onclick="confirmRenameProvider('${apiType}', '${providerName}')"
+                        class="text-success hover:text-success/80 p-0.5"
+                        title="Save"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </button>
+                    <button
+                        onclick="cancelRenameProvider('${apiType}', '${providerName}')"
+                        class="text-muted-foreground hover:text-foreground p-0.5"
+                        title="Cancel"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            // Focus the input
+            setTimeout(() => {
+                const input = document.getElementById(`rename-input-${apiType}-${providerName}`);
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 0);
+        }
+
+        function handleProviderNameInput(input) {
+            // Convert to lowercase and keep only letters and numbers
+            const originalValue = input.value;
+            const cleanedValue = input.value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            if (originalValue !== cleanedValue) {
+                input.value = cleanedValue;
+
+                // Show warning if any special characters were removed
+                if (/[^a-zA-Z0-9]/.test(originalValue)) {
+                    showWarningToast('Only lowercase letters and numbers are allowed in provider names');
+                }
+            }
+        }
+
+        function handleRenameKeyPress(event, apiType, providerName) {
+            if (event.key === 'Enter') {
+                confirmRenameProvider(apiType, providerName);
+            } else if (event.key === 'Escape') {
+                cancelRenameProvider(apiType, providerName);
+            }
+        }
+
+        function cancelRenameProvider(apiType, providerName) {
+            // Just refresh the provider list to restore original state
+            renderProviders();
+        }
+
+        async function confirmRenameProvider(apiType, oldName) {
+            const input = document.getElementById(`rename-input-${apiType}-${oldName}`);
+            if (!input) return;
+
+            const newName = input.value.trim().toLowerCase();
+
+            // Validation
+            if (!newName) {
+                showWarningToast('Provider name cannot be empty');
+                return;
+            }
+
+            if (!/^[a-z][a-z0-9]*$/.test(newName)) {
+                showWarningToast('Provider name must start with a letter and contain only lowercase letters and numbers');
+                return;
+            }
+
+            if (newName === oldName) {
+                cancelRenameProvider(apiType, oldName);
+                return;
+            }
+
+            // Check if new name already exists
+            const newKeysVar = `${apiType.toUpperCase()}_${newName.toUpperCase()}_API_KEYS`;
+            if (envVars[newKeysVar]) {
+                showErrorToast(`Provider '${newName}' already exists`);
+                return;
+            }
+
+            try {
+                // Get old values
+                const oldKeysVar = `${apiType.toUpperCase()}_${oldName.toUpperCase()}_API_KEYS`;
+                const oldBaseUrlVar = `${apiType.toUpperCase()}_${oldName.toUpperCase()}_BASE_URL`;
+                const newBaseUrlVar = `${apiType.toUpperCase()}_${newName.toUpperCase()}_BASE_URL`;
+
+                const keys = envVars[oldKeysVar];
+                const baseUrl = envVars[oldBaseUrlVar];
+
+                if (!keys) {
+                    showErrorToast('Provider not found');
+                    return;
+                }
+
+                // Create new entries
+                envVars[newKeysVar] = keys;
+                if (baseUrl) {
+                    envVars[newBaseUrlVar] = baseUrl;
+                }
+
+                // Delete old entries
+                delete envVars[oldKeysVar];
+                delete envVars[oldBaseUrlVar];
+
+                // Save to server
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+
+                if (response.ok) {
+                    showSuccessToast(`Provider renamed from '${oldName}' to '${newName}'`);
+                    await loadEnvVars();
+                } else {
+                    // Rollback on error
+                    envVars[oldKeysVar] = keys;
+                    if (baseUrl) {
+                        envVars[oldBaseUrlVar] = baseUrl;
+                    }
+                    delete envVars[newKeysVar];
+                    delete envVars[newBaseUrlVar];
+
+                    showErrorToast('Failed to rename provider');
+                }
+            } catch (error) {
+                console.error('Rename error:', error);
+                showErrorToast('Failed to rename provider: ' + error.message);
+            }
+        }
+
         async function deleteProviderKey(apiType, providerName, keyIndex) {
             
             const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
