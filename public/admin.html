@@ -455,7 +455,19 @@
                 <div class="space-y-4">
                     <!-- Existing Providers -->
                     <div class="section">
-                        <h3 class="text-sm font-medium text-foreground mb-3">Configured Providers</h3>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-medium text-foreground">Configured Providers</h3>
+                            <button
+                                onclick="exportConfiguration()"
+                                class="btn btn-secondary px-3 py-1.5 text-xs font-medium flex items-center gap-1.5"
+                                title="Copy all configuration as .env format to clipboard"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                Copy .env
+                            </button>
+                        </div>
                         <div id="providersContainer" class="space-y-3 mb-4"></div>
                     </div>
 
@@ -1626,7 +1638,128 @@
                 document.body.removeChild(textArea);
             }
         }
-        
+
+        // Export configuration as environment variables
+        async function exportConfiguration() {
+            try {
+                let envContent = '# API Key Rotator Configuration Export\n';
+                envContent += `# Exported on ${new Date().toISOString()}\n\n`;
+
+                // Add basic configuration
+                envContent += '# Basic Configuration\n';
+                envContent += `PORT=${envVars.PORT || '8990'}\n`;
+                if (envVars.ADMIN_PASSWORD) {
+                    envContent += `ADMIN_PASSWORD=${envVars.ADMIN_PASSWORD}\n`;
+                }
+                envContent += '\n';
+
+                // Group providers for better organization
+                const providers = {};
+
+                // Parse existing environment variables
+                for (const [key, value] of Object.entries(envVars)) {
+                    if (key.endsWith('_API_KEYS') && value) {
+                        const match = key.match(/^(.+)_(.+)_API_KEYS$/);
+                        if (match && match.length >= 3) {
+                            const apiType = match[1];
+                            const providerName = match[2];
+                            const providerKey = `${apiType}_${providerName}`;
+
+                            if (!providers[providerKey]) {
+                                providers[providerKey] = {
+                                    name: providerName,
+                                    apiType: apiType,
+                                    keys: value,
+                                    baseUrl: ''
+                                };
+                            }
+                        } else {
+                            // Handle legacy format (OPENAI_API_KEYS, GEMINI_API_KEYS)
+                            const legacyMatch = key.match(/^(OPENAI|GEMINI)_API_KEYS$/);
+                            if (legacyMatch) {
+                                const apiType = legacyMatch[1];
+                                const providerKey = `${apiType}_LEGACY`;
+                                providers[providerKey] = {
+                                    name: apiType.toLowerCase(),
+                                    apiType: apiType,
+                                    keys: value,
+                                    baseUrl: '',
+                                    legacy: true
+                                };
+                            }
+                        }
+                    } else if (key.endsWith('_BASE_URL') && value) {
+                        const match = key.match(/^(.+)_(.+)_BASE_URL$/);
+                        if (match && match.length >= 3) {
+                            const apiType = match[1];
+                            const providerName = match[2];
+                            const providerKey = `${apiType}_${providerName}`;
+
+                            if (!providers[providerKey]) {
+                                providers[providerKey] = {
+                                    name: providerName,
+                                    apiType: apiType,
+                                    keys: '',
+                                    baseUrl: value
+                                };
+                            } else {
+                                providers[providerKey].baseUrl = value;
+                            }
+                        } else {
+                            // Handle legacy format
+                            const legacyMatch = key.match(/^(OPENAI|GEMINI)_BASE_URL$/);
+                            if (legacyMatch) {
+                                const apiType = legacyMatch[1];
+                                const providerKey = `${apiType}_LEGACY`;
+                                if (providers[providerKey]) {
+                                    providers[providerKey].baseUrl = value;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Add legacy providers section if any exist
+                const legacyProviders = Object.entries(providers).filter(([_, p]) => p.legacy);
+                if (legacyProviders.length > 0) {
+                    envContent += '# Legacy Providers (standard endpoints)\n';
+                    for (const [_, provider] of legacyProviders) {
+                        if (provider.keys) {
+                            envContent += `${provider.apiType}_API_KEYS=${provider.keys}\n`;
+                        }
+                        if (provider.baseUrl) {
+                            envContent += `${provider.apiType}_BASE_URL=${provider.baseUrl}\n`;
+                        }
+                    }
+                    envContent += '\n';
+                }
+
+                // Add named providers section
+                const namedProviders = Object.entries(providers).filter(([_, p]) => !p.legacy);
+                if (namedProviders.length > 0) {
+                    envContent += '# Named Providers (custom endpoints)\n';
+                    for (const [_, provider] of namedProviders) {
+                        if (provider.keys) {
+                            envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_API_KEYS=${provider.keys}\n`;
+                        }
+                        if (provider.baseUrl) {
+                            envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_BASE_URL=${provider.baseUrl}\n`;
+                        }
+                        envContent += '\n';
+                    }
+                }
+
+                // Copy to clipboard
+                await navigator.clipboard.writeText(envContent);
+
+                showSuccessToast('.env configuration copied to clipboard! Ready to paste.');
+
+            } catch (error) {
+                console.error('Export error:', error);
+                showErrorToast('Failed to export configuration: ' + error.message);
+            }
+        }
+
         async function deleteProvider(apiType, providerName) {
             const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
             const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
