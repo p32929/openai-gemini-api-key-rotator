@@ -583,17 +583,114 @@ class ProxyServer {
         finalEnvVars.ADMIN_PASSWORD = currentEnvVars.ADMIN_PASSWORD;
       }
       
-      // Write new env file - filter out empty values for BASE_URL
-      const envContent = Object.entries(finalEnvVars)
-        .filter(([key, value]) => {
-          // Skip BASE_URL if it's empty or undefined
-          if (key === 'BASE_URL' && (!value || value.trim() === '')) {
-            return false;
+      // Write new env file with nice formatting and comments
+      let envContent = '# API Key Rotator Configuration\n';
+      envContent += `# Last updated: ${new Date().toISOString()}\n\n`;
+
+      // Group environment variables by category
+      const basicConfig = {};
+      const providers = {};
+      const otherConfig = {};
+
+      Object.entries(finalEnvVars).forEach(([key, value]) => {
+        // Skip empty BASE_URL values
+        if (key === 'BASE_URL' && (!value || value.trim() === '')) {
+          return;
+        }
+
+        if (key === 'PORT' || key === 'ADMIN_PASSWORD') {
+          basicConfig[key] = value;
+        } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL')) {
+          // Extract provider info
+          const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL)$/);
+          if (match) {
+            const apiType = match[1];
+            const providerName = match[2];
+            const keyType = match[3];
+            const providerKey = `${apiType}_${providerName}`;
+
+            if (!providers[providerKey]) {
+              providers[providerKey] = {
+                apiType,
+                providerName,
+                keys: '',
+                baseUrl: ''
+              };
+            }
+
+            if (keyType === 'API_KEYS') {
+              providers[providerKey].keys = value;
+            } else {
+              providers[providerKey].baseUrl = value;
+            }
+          } else {
+            otherConfig[key] = value;
           }
-          return true;
-        })
-        .map(([key, value]) => `${key}=${value}`)
-        .join('\n');
+        } else {
+          otherConfig[key] = value;
+        }
+      });
+
+      // Write basic configuration
+      if (Object.keys(basicConfig).length > 0) {
+        envContent += '# Basic Configuration\n';
+        for (const [key, value] of Object.entries(basicConfig)) {
+          envContent += `${key}=${value}\n`;
+        }
+        envContent += '\n';
+      }
+
+      // Write providers grouped by type
+      const openaiProviders = Object.values(providers).filter(p => p.apiType === 'OPENAI');
+      const geminiProviders = Object.values(providers).filter(p => p.apiType === 'GEMINI');
+      const otherProviders = Object.values(providers).filter(p => p.apiType !== 'OPENAI' && p.apiType !== 'GEMINI');
+
+      if (openaiProviders.length > 0) {
+        envContent += '# OpenAI Compatible Providers\n';
+        for (const provider of openaiProviders) {
+          if (provider.keys) {
+            envContent += `${provider.apiType}_${provider.providerName}_API_KEYS=${provider.keys}\n`;
+          }
+          if (provider.baseUrl) {
+            envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
+          }
+          envContent += '\n';
+        }
+      }
+
+      if (geminiProviders.length > 0) {
+        envContent += '# Gemini Providers\n';
+        for (const provider of geminiProviders) {
+          if (provider.keys) {
+            envContent += `${provider.apiType}_${provider.providerName}_API_KEYS=${provider.keys}\n`;
+          }
+          if (provider.baseUrl) {
+            envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
+          }
+          envContent += '\n';
+        }
+      }
+
+      if (otherProviders.length > 0) {
+        envContent += '# Other Providers\n';
+        for (const provider of otherProviders) {
+          if (provider.keys) {
+            envContent += `${provider.apiType}_${provider.providerName}_API_KEYS=${provider.keys}\n`;
+          }
+          if (provider.baseUrl) {
+            envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
+          }
+          envContent += '\n';
+        }
+      }
+
+      // Write other configuration
+      if (Object.keys(otherConfig).length > 0) {
+        envContent += '# Additional Configuration\n';
+        for (const [key, value] of Object.entries(otherConfig)) {
+          envContent += `${key}=${value}\n`;
+        }
+      }
       
       fs.writeFileSync(envPath, envContent);
       
