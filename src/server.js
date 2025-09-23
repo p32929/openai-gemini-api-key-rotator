@@ -640,10 +640,16 @@ class ProxyServer {
         envContent += '\n';
       }
 
-      // Write providers grouped by type
-      const openaiProviders = Object.values(providers).filter(p => p.apiType === 'OPENAI');
-      const geminiProviders = Object.values(providers).filter(p => p.apiType === 'GEMINI');
-      const otherProviders = Object.values(providers).filter(p => p.apiType !== 'OPENAI' && p.apiType !== 'GEMINI');
+      // Write providers grouped by type and sorted alphabetically by provider name
+      const openaiProviders = Object.values(providers)
+        .filter(p => p.apiType === 'OPENAI')
+        .sort((a, b) => a.providerName.toLowerCase().localeCompare(b.providerName.toLowerCase()));
+      const geminiProviders = Object.values(providers)
+        .filter(p => p.apiType === 'GEMINI')
+        .sort((a, b) => a.providerName.toLowerCase().localeCompare(b.providerName.toLowerCase()));
+      const otherProviders = Object.values(providers)
+        .filter(p => p.apiType !== 'OPENAI' && p.apiType !== 'GEMINI')
+        .sort((a, b) => a.providerName.toLowerCase().localeCompare(b.providerName.toLowerCase()));
 
       if (openaiProviders.length > 0) {
         envContent += '# OpenAI Compatible Providers\n';
