@@ -7,35 +7,40 @@ class GeminiClient {
     this.baseUrl = baseUrl;
   }
 
-  async makeRequest(method, path, body, headers = {}) {
+  async makeRequest(method, path, body, headers = {}, customStatusCodes = null) {
     // Create a new request context for this specific request
     const requestContext = this.keyRotator.createRequestContext();
     let lastError = null;
     let lastResponse = null;
-    
+
+    // Determine which status codes should trigger rotation
+    // Default is just 429, but can be overridden
+    const rotationStatusCodes = customStatusCodes || new Set([429]);
+
     // Try each available key for this request
     let apiKey;
     while ((apiKey = requestContext.getNextKey()) !== null) {
       const maskedKey = this.maskApiKey(apiKey);
-      
+
       console.log(`[GEMINI::${maskedKey}] Attempting ${method} ${path}`);
-      
+
       try {
         const response = await this.sendRequest(method, path, body, headers, apiKey);
-        
-        if (response.statusCode === 429) {
-          console.log(`[GEMINI::${maskedKey}] Rate limited (429) - trying next key`);
+
+        // Check if this status code should trigger rotation
+        if (rotationStatusCodes.has(response.statusCode)) {
+          console.log(`[GEMINI::${maskedKey}] Status ${response.statusCode} triggers rotation - trying next key`);
           requestContext.markKeyAsRateLimited(apiKey);
-          lastResponse = response; // Keep the 429 response in case all keys fail
+          lastResponse = response; // Keep the response in case all keys fail
           continue;
         }
-        
+
         console.log(`[GEMINI::${maskedKey}] Success (${response.statusCode})`);
         return response;
       } catch (error) {
         console.log(`[GEMINI::${maskedKey}] Request failed: ${error.message}`);
         lastError = error;
-        // For non-429 errors, we still try the next key
+        // For network errors, we still try the next key
         continue;
       }
     }

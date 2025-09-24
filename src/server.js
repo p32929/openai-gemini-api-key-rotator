@@ -100,24 +100,41 @@ class ProxyServer {
         this.logApiRequest(requestId, req.method, path, providerName, null, null, null, clientIp);
       }
       
+      // Parse custom status codes from Authorization header if present
+      const authHeader = req.headers['authorization'];
+      const customStatusCodes = this.parseStatusCodesFromAuth(authHeader);
+
+      // Clean the auth header before passing to API
       const headers = this.extractRelevantHeaders(req.headers, apiType);
+      if (authHeader) {
+        const cleanedAuth = this.cleanAuthHeader(authHeader);
+        if (cleanedAuth) {
+          headers['authorization'] = cleanedAuth;
+        }
+      }
+
       let response;
-      
+
       // Get or create client for this provider
       const client = await this.getProviderClient(providerName, provider, legacy);
       if (!client) {
         console.log(`[REQ-${requestId}] Response: 503 Service Unavailable - Provider '${providerName}' not configured`);
-        
+
         if (isApiCall) {
           const responseTime = Date.now() - startTime;
           this.logApiRequest(requestId, req.method, path, providerName, 503, responseTime, `Provider '${providerName}' not configured`, clientIp);
         }
-        
+
         this.sendError(res, 503, `Provider '${providerName}' not configured`);
         return;
       }
-      
-      response = await client.makeRequest(req.method, path, body, headers);
+
+      // Pass custom status codes to client if provided
+      if (customStatusCodes) {
+        console.log(`[REQ-${requestId}] Using custom status codes for rotation: ${Array.from(customStatusCodes).join(', ')}`);
+      }
+
+      response = await client.makeRequest(req.method, path, body, headers, customStatusCodes);
       
       // Log the successful response
       if (isApiCall) {
@@ -318,10 +335,66 @@ class ProxyServer {
     }
   }
 
+  parseStatusCodesFromAuth(authHeader) {
+    // Extract [STATUS_CODES:...] from the Authorization header
+    const match = authHeader?.match(/\[STATUS_CODES:([^\]]+)\]/i);
+    if (!match) return null;
+
+    const statusCodeStr = match[1];
+    const codes = new Set();
+
+    // Parse each part (e.g., "429", "400-420", "500+", "400=+")
+    const parts = statusCodeStr.split(',').map(s => s.trim());
+
+    for (const part of parts) {
+      if (part.includes('-')) {
+        // Range: 400-420
+        const [start, end] = part.split('-').map(n => parseInt(n.trim()));
+        if (!isNaN(start) && !isNaN(end)) {
+          for (let i = start; i <= end; i++) {
+            codes.add(i);
+          }
+        }
+      } else if (part.endsWith('=+')) {
+        // Equal or greater: 400=+
+        const base = parseInt(part.slice(0, -2).trim());
+        if (!isNaN(base)) {
+          // Add codes from base to 599 (reasonable upper limit for HTTP status codes)
+          for (let i = base; i <= 599; i++) {
+            codes.add(i);
+          }
+        }
+      } else if (part.endsWith('+')) {
+        // Greater than: 400+
+        const base = parseInt(part.slice(0, -1).trim());
+        if (!isNaN(base)) {
+          // Add codes from base+1 to 599
+          for (let i = base + 1; i <= 599; i++) {
+            codes.add(i);
+          }
+        }
+      } else {
+        // Single code: 429
+        const code = parseInt(part.trim());
+        if (!isNaN(code)) {
+          codes.add(code);
+        }
+      }
+    }
+
+    return codes.size > 0 ? codes : null;
+  }
+
+  cleanAuthHeader(authHeader) {
+    // Remove [STATUS_CODES:...] from the auth header before passing to the actual API
+    if (!authHeader) return authHeader;
+    return authHeader.replace(/\[STATUS_CODES:[^\]]+\]/gi, '').trim();
+  }
+
   extractRelevantHeaders(headers, apiType) {
     const relevantHeaders = {};
     let headersToInclude;
-    
+
     if (apiType === 'gemini') {
       headersToInclude = [
         'content-type',
@@ -338,13 +411,13 @@ class ProxyServer {
         'openai-project'
       ];
     }
-    
+
     for (const [key, value] of Object.entries(headers)) {
       if (headersToInclude.includes(key.toLowerCase())) {
         relevantHeaders[key] = value;
       }
     }
-    
+
     return relevantHeaders;
   }
 
