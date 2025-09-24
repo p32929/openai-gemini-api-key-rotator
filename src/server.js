@@ -95,14 +95,27 @@ class ProxyServer {
       const { providerName, apiType, path, provider, legacy } = routeInfo;
       console.log(`[REQ-${requestId}] Proxying to provider '${providerName}' (${apiType.toUpperCase()}): ${path}`);
       
+      // Parse custom status codes and access key from Authorization header if present
+      const authHeader = req.headers['authorization'];
+      const customStatusCodes = this.parseStatusCodesFromAuth(authHeader);
+      
+      // Validate ACCESS_KEY for this provider
+      if (!this.validateAccessKey(providerName, authHeader)) {
+        console.log(`[REQ-${requestId}] Response: 401 Unauthorized - Invalid or missing ACCESS_KEY for provider '${providerName}'`);
+        
+        if (isApiCall) {
+          const responseTime = Date.now() - startTime;
+          this.logApiRequest(requestId, req.method, path, providerName, 401, responseTime, 'Invalid or missing ACCESS_KEY', clientIp);
+        }
+        
+        this.sendError(res, 401, `Invalid or missing ACCESS_KEY for provider '${providerName}'`);
+        return;
+      }
+      
       // Log the initial request
       if (isApiCall) {
         this.logApiRequest(requestId, req.method, path, providerName, null, null, null, clientIp);
       }
-      
-      // Parse custom status codes from Authorization header if present
-      const authHeader = req.headers['authorization'];
-      const customStatusCodes = this.parseStatusCodesFromAuth(authHeader);
 
       // Clean the auth header before passing to API
       const headers = this.extractRelevantHeaders(req.headers, apiType);
@@ -385,10 +398,35 @@ class ProxyServer {
     return codes.size > 0 ? codes : null;
   }
 
+  parseAccessKeyFromAuth(authHeader) {
+    // Extract [ACCESS_KEY:...] from the Authorization header
+    const match = authHeader?.match(/\[ACCESS_KEY:([^\]]+)\]/i);
+    if (!match) return null;
+    return match[1].trim();
+  }
+
+  validateAccessKey(provider, authHeader) {
+    const providerConfig = this.config.getProvider(provider);
+    if (!providerConfig || !providerConfig.accessKey) {
+      // No access key required for this provider
+      return true;
+    }
+
+    const providedAccessKey = this.parseAccessKeyFromAuth(authHeader);
+    if (!providedAccessKey) {
+      return false;
+    }
+
+    return providedAccessKey === providerConfig.accessKey;
+  }
+
   cleanAuthHeader(authHeader) {
-    // Remove [STATUS_CODES:...] from the auth header before passing to the actual API
+    // Remove [STATUS_CODES:...] and [ACCESS_KEY:...] from the auth header before passing to the actual API
     if (!authHeader) return authHeader;
-    return authHeader.replace(/\[STATUS_CODES:[^\]]+\]/gi, '').trim();
+    return authHeader
+      .replace(/\[STATUS_CODES:[^\]]+\]/gi, '')
+      .replace(/\[ACCESS_KEY:[^\]]+\]/gi, '')
+      .trim();
   }
 
   extractRelevantHeaders(headers, apiType) {
@@ -673,9 +711,9 @@ class ProxyServer {
 
         if (key === 'PORT' || key === 'ADMIN_PASSWORD') {
           basicConfig[key] = value;
-        } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL')) {
+        } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL') || key.endsWith('_ACCESS_KEY')) {
           // Extract provider info
-          const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL)$/);
+          const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL|ACCESS_KEY)$/);
           if (match) {
             const apiType = match[1];
             const providerName = match[2];
@@ -687,14 +725,17 @@ class ProxyServer {
                 apiType,
                 providerName,
                 keys: '',
-                baseUrl: ''
+                baseUrl: '',
+                accessKey: ''
               };
             }
 
             if (keyType === 'API_KEYS') {
               providers[providerKey].keys = value;
-            } else {
+            } else if (keyType === 'BASE_URL') {
               providers[providerKey].baseUrl = value;
+            } else if (keyType === 'ACCESS_KEY') {
+              providers[providerKey].accessKey = value;
             }
           } else {
             otherConfig[key] = value;
@@ -733,6 +774,9 @@ class ProxyServer {
           if (provider.baseUrl) {
             envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
           }
+          if (provider.accessKey) {
+            envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
+          }
           envContent += '\n';
         }
       }
@@ -746,6 +790,9 @@ class ProxyServer {
           if (provider.baseUrl) {
             envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
           }
+          if (provider.accessKey) {
+            envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
+          }
           envContent += '\n';
         }
       }
@@ -758,6 +805,9 @@ class ProxyServer {
           }
           if (provider.baseUrl) {
             envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
+          }
+          if (provider.accessKey) {
+            envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
           }
           envContent += '\n';
         }

@@ -93,7 +93,7 @@ class Config {
   }
 
   parseProviders(envVars) {
-    // Parse {API_TYPE}_{PROVIDER}_API_KEYS and {API_TYPE}_{PROVIDER}_BASE_URL format
+    // Parse {API_TYPE}_{PROVIDER}_API_KEYS, {API_TYPE}_{PROVIDER}_BASE_URL, and {API_TYPE}_{PROVIDER}_ACCESS_KEY format
     const providerConfigs = new Map();
 
     for (const [key, value] of Object.entries(envVars)) {
@@ -106,7 +106,7 @@ class Config {
           const provider = parts.length === 1 ? apiType : parts.slice(1).join('_').toLowerCase();
           
           if (!providerConfigs.has(provider)) {
-            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null });
+            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null });
           }
           
           providerConfigs.get(provider).keys = this.parseApiKeys(value);
@@ -121,10 +121,24 @@ class Config {
           const provider = parts.length === 1 ? apiType : parts.slice(1).join('_').toLowerCase();
           
           if (!providerConfigs.has(provider)) {
-            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null });
+            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null });
           }
           
           providerConfigs.get(provider).baseUrl = value.trim();
+        }
+      } else if (key.endsWith('_ACCESS_KEY') && value) {
+        // Extract API_TYPE and PROVIDER from key
+        const parts = key.replace('_ACCESS_KEY', '').split('_');
+        if (parts.length >= 1) {
+          const apiType = parts[0].toLowerCase();
+          // If no provider name specified, use the API type as provider name (default)
+          const provider = parts.length === 1 ? apiType : parts.slice(1).join('_').toLowerCase();
+          
+          if (!providerConfigs.has(provider)) {
+            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null });
+          }
+          
+          providerConfigs.get(provider).accessKey = value.trim();
         }
       }
     }
