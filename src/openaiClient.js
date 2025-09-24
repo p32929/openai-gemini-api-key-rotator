@@ -92,16 +92,23 @@ class OpenAIClient {
       
       const url = new URL(fullUrl);
       
+      // Build headers, ensuring Authorization header is properly set
+      const finalHeaders = {
+        'Content-Type': 'application/json',
+        ...headers
+      };
+
+      // Only set Authorization if not already provided in headers
+      if (!headers || !headers.authorization) {
+        finalHeaders['Authorization'] = `Bearer ${apiKey}`;
+      }
+
       const options = {
         hostname: url.hostname,
         port: url.port || 443,
         path: url.pathname + url.search,
         method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          ...headers
-        }
+        headers: finalHeaders
       };
 
       if (body && method !== 'GET') {

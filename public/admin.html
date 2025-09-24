@@ -1686,8 +1686,20 @@
             const accessKey = envVars[accessKeyVar];
             let curlCommand = '';
 
-            // Add Authorization header with ACCESS_KEY if configured
-            const authHeader = accessKey ? `  -H "Authorization: Bearer [ACCESS_KEY:${accessKey}]" \\\n` : '';
+            // Build Authorization header
+            let authContent = '';
+            if (apiType === 'openai') {
+                // Always include STATUS_CODES:429 for OpenAI-compatible providers
+                authContent = '[STATUS_CODES:429]';
+                if (accessKey) {
+                    authContent += `[ACCESS_KEY:${accessKey}]`;
+                }
+            } else if (apiType === 'gemini' && accessKey) {
+                // For Gemini, only include ACCESS_KEY if configured
+                authContent = `[ACCESS_KEY:${accessKey}]`;
+            }
+
+            const authHeader = authContent ? `  -H "Authorization: Bearer ${authContent}" \\\n` : '';
 
             if (apiType === 'openai') {
                 // OpenAI-compatible cURL command

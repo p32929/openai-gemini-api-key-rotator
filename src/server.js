@@ -124,6 +124,7 @@ class ProxyServer {
         if (cleanedAuth) {
           headers['authorization'] = cleanedAuth;
         }
+        // Important: don't set authorization to undefined/null as it would override the client's API key
       }
 
       let response;
@@ -194,13 +195,13 @@ class ProxyServer {
     // Parse new provider format: /{provider}/{version}/*
     const pathParts = path.split('/').filter(part => part.length > 0);
     if (pathParts.length >= 2) {
-      const providerName = pathParts[0];
+      const providerName = pathParts[0].toLowerCase();
       const provider = this.config.getProvider(providerName);
-      
+
       if (provider) {
         // Extract the API path after /{provider}/{version}
         const apiPath = '/' + pathParts.slice(1).join('/') + urlObj.search;
-        
+
         return {
           providerName: providerName,
           apiType: provider.apiType,
@@ -423,10 +424,19 @@ class ProxyServer {
   cleanAuthHeader(authHeader) {
     // Remove [STATUS_CODES:...] and [ACCESS_KEY:...] from the auth header before passing to the actual API
     if (!authHeader) return authHeader;
-    return authHeader
+
+    const cleaned = authHeader
       .replace(/\[STATUS_CODES:[^\]]+\]/gi, '')
       .replace(/\[ACCESS_KEY:[^\]]+\]/gi, '')
       .trim();
+
+    // If after cleaning we're left with just "Bearer" or "Bearer ", return null
+    // This allows the client to add its own API key
+    if (cleaned === 'Bearer' || cleaned === 'Bearer ') {
+      return null;
+    }
+
+    return cleaned;
   }
 
   extractRelevantHeaders(headers, apiType) {
