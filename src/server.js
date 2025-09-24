@@ -94,20 +94,24 @@ class ProxyServer {
 
       const { providerName, apiType, path, provider, legacy } = routeInfo;
       console.log(`[REQ-${requestId}] Proxying to provider '${providerName}' (${apiType.toUpperCase()}): ${path}`);
-      
-      // Parse custom status codes and access key from Authorization header if present
-      const authHeader = req.headers['authorization'];
+
+      // Get the appropriate header based on API type
+      const authHeader = apiType === 'gemini'
+        ? req.headers['x-goog-api-key']
+        : req.headers['authorization'];
+
+      // Parse custom status codes and access key from header
       const customStatusCodes = this.parseStatusCodesFromAuth(authHeader);
-      
+
       // Validate ACCESS_KEY for this provider
       if (!this.validateAccessKey(providerName, authHeader)) {
         console.log(`[REQ-${requestId}] Response: 401 Unauthorized - Invalid or missing ACCESS_KEY for provider '${providerName}'`);
-        
+
         if (isApiCall) {
           const responseTime = Date.now() - startTime;
           this.logApiRequest(requestId, req.method, path, providerName, 401, responseTime, 'Invalid or missing ACCESS_KEY', clientIp);
         }
-        
+
         this.sendError(res, 401, `Invalid or missing ACCESS_KEY for provider '${providerName}'`);
         return;
       }
@@ -122,9 +126,13 @@ class ProxyServer {
       if (authHeader) {
         const cleanedAuth = this.cleanAuthHeader(authHeader);
         if (cleanedAuth) {
-          headers['authorization'] = cleanedAuth;
+          if (apiType === 'gemini') {
+            headers['x-goog-api-key'] = cleanedAuth;
+          } else {
+            headers['authorization'] = cleanedAuth;
+          }
         }
-        // Important: don't set authorization to undefined/null as it would override the client's API key
+        // Important: don't set undefined/null as it would override the client's API key
       }
 
       let response;
@@ -449,6 +457,7 @@ class ProxyServer {
         'accept',
         'user-agent',
         'x-goog-user-project'
+        // Don't include x-goog-api-key here - we handle it separately
       ];
     } else if (apiType === 'openai') {
       headersToInclude = [

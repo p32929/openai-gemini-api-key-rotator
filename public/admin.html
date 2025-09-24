@@ -1686,22 +1686,16 @@
             const accessKey = envVars[accessKeyVar];
             let curlCommand = '';
 
-            // Build Authorization header
-            let authContent = '';
+            // Build auth headers based on API type
+
             if (apiType === 'openai') {
-                // Always include STATUS_CODES:429 for OpenAI-compatible providers
-                authContent = '[STATUS_CODES:429]';
+                // Build Authorization header for OpenAI
+                let authContent = '[STATUS_CODES:429]';
                 if (accessKey) {
                     authContent += `[ACCESS_KEY:${accessKey}]`;
                 }
-            } else if (apiType === 'gemini' && accessKey) {
-                // For Gemini, only include ACCESS_KEY if configured
-                authContent = `[ACCESS_KEY:${accessKey}]`;
-            }
+                const authHeader = `  -H "Authorization: Bearer ${authContent}" \\\n`;
 
-            const authHeader = authContent ? `  -H "Authorization: Bearer ${authContent}" \\\n` : '';
-
-            if (apiType === 'openai') {
                 // OpenAI-compatible cURL command
                 curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/chat/completions" \\
 ${authHeader}  -H "Content-Type: application/json" \\
@@ -1717,9 +1711,16 @@ ${authHeader}  -H "Content-Type: application/json" \\
     "temperature": 0.7
   }'`;
             } else if (apiType === 'gemini') {
+                // Build x-goog-api-key header for Gemini
+                let authContent = '[STATUS_CODES:429]';
+                if (accessKey) {
+                    authContent += `[ACCESS_KEY:${accessKey}]`;
+                }
+                const googApiKeyHeader = `  -H "x-goog-api-key: ${authContent}" \\\n`;
+
                 // Gemini-compatible cURL command
                 curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/models/gemini-2.5-pro:generateContent" \\
-${authHeader}  -H "Content-Type: application/json" \\
+${googApiKeyHeader}  -H "Content-Type: application/json" \\
   -d '{
     "contents": [
       {
