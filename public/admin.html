@@ -704,7 +704,43 @@
 
     <script>
         let envVars = {};
-        
+
+        // Unified copy to clipboard function that works without SSL
+        async function copyToClipboard(text, successMessage) {
+            try {
+                // Try modern clipboard API first
+                await navigator.clipboard.writeText(text);
+                showSuccessToast(successMessage || 'Copied to clipboard!');
+                return true;
+            } catch (error) {
+                // Fallback for non-HTTPS or older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    const successful = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    if (successful) {
+                        showSuccessToast(successMessage || 'Copied to clipboard!');
+                        return true;
+                    } else {
+                        showErrorToast('Failed to copy to clipboard');
+                        return false;
+                    }
+                } catch (err) {
+                    document.body.removeChild(textArea);
+                    showErrorToast('Failed to copy to clipboard');
+                    return false;
+                }
+            }
+        }
+
         // Header-integrated notification system
         let activeNotifications = [];
         let notificationId = 0;
@@ -1657,30 +1693,7 @@
         async function copyEndpointUrl(providerName) {
             const baseUrl = `${window.location.protocol}//${window.location.host}`;
             const endpointUrl = `${baseUrl}/${providerName}/v1`;
-
-            try {
-                await navigator.clipboard.writeText(endpointUrl);
-                showSuccessToast(`Endpoint URL copied: ${endpointUrl}`);
-            } catch (error) {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = endpointUrl;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                textArea.style.top = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-
-                try {
-                    document.execCommand('copy');
-                    showSuccessToast(`Endpoint URL copied: ${endpointUrl}`);
-                } catch (err) {
-                    showErrorToast('Failed to copy endpoint URL');
-                }
-
-                document.body.removeChild(textArea);
-            }
+            await copyToClipboard(endpointUrl, `Endpoint URL copied: ${endpointUrl}`);
         }
 
         // Generate and copy cURL command for testing a provider
@@ -1745,31 +1758,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 return;
             }
             
-            try {
-                // Copy to clipboard
-                await navigator.clipboard.writeText(curlCommand);
-                showSuccessToast(`📋 cURL command copied for provider '${providerName}'! Ready to test in terminal.`);
-            } catch (error) {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = curlCommand;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                textArea.style.top = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                
-                try {
-                    document.execCommand('copy');
-                    showSuccessToast(`📋 cURL command copied for provider '${providerName}'! Ready to test in terminal.`);
-                } catch (err) {
-                    showErrorToast('Failed to copy cURL command. Please copy manually.');
-                    console.log('cURL command:', curlCommand);
-                }
-                
-                document.body.removeChild(textArea);
-            }
+            await copyToClipboard(curlCommand, `📋 cURL command copied for provider '${providerName}'! Ready to test in terminal.`);
         }
 
         // Export configuration as environment variables
@@ -1883,9 +1872,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 }
 
                 // Copy to clipboard
-                await navigator.clipboard.writeText(envContent);
-
-                showSuccessToast('.env configuration copied to clipboard! Ready to paste.');
+                await copyToClipboard(envContent, '.env configuration copied to clipboard! Ready to paste.');
 
             } catch (error) {
                 console.error('Export error:', error);
@@ -1947,12 +1934,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 return;
             }
 
-            try {
-                await navigator.clipboard.writeText(input.value);
-                showSuccessToast('Access key copied to clipboard');
-            } catch (error) {
-                showErrorToast('Failed to copy access key');
-            }
+            await copyToClipboard(input.value, 'Access key copied to clipboard');
         }
 
         async function saveAccessKey(apiType, providerName) {
