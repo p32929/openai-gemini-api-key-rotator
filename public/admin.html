@@ -1768,6 +1768,8 @@
             const baseUrl = `${window.location.protocol}//${window.location.host}`;
             const accessKeyVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_ACCESS_KEY`;
             const accessKey = envVars[accessKeyVar];
+            const defaultModelVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_DEFAULT_MODEL`;
+            const defaultModel = envVars[defaultModelVar];
             let curlCommand = '';
 
             // Build auth headers based on API type
@@ -1780,19 +1782,20 @@
                 }
                 const authHeader = `  -H "Authorization: Bearer ${authContent}" \\\n`;
 
+                // Use default model if set, otherwise use YOUR_MODEL_NAME placeholder
+                const model = defaultModel || 'YOUR_MODEL_NAME';
+
                 // OpenAI-compatible cURL command
                 curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/chat/completions" \\
 ${authHeader}  -H "Content-Type: application/json" \\
   -d '{
-    "model": "gpt-4o-mini",
+    "model": "${model}",
     "messages": [
       {
         "role": "user",
         "content": "Hello! Please say hello back."
       }
-    ],
-    "max_tokens": 50,
-    "temperature": 0.7
+    ]
   }'`;
             } else if (apiType === 'gemini') {
                 // Build x-goog-api-key header for Gemini
@@ -1802,8 +1805,11 @@ ${authHeader}  -H "Content-Type: application/json" \\
                 }
                 const googApiKeyHeader = `  -H "x-goog-api-key: ${authContent}" \\\n`;
 
+                // Use default model if set, otherwise use YOUR_MODEL_NAME placeholder
+                const model = defaultModel || 'YOUR_MODEL_NAME';
+
                 // Gemini-compatible cURL command
-                curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/models/gemini-2.5-pro:generateContent" \\
+                curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/models/${model}:generateContent" \\
 ${googApiKeyHeader}  -H "Content-Type: application/json" \\
   -d '{
     "contents": [
@@ -1814,11 +1820,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
           }
         ]
       }
-    ],
-    "generationConfig": {
-      "maxOutputTokens": 50,
-      "temperature": 0.7
-    }
+    ]
   }'`;
             } else {
                 showErrorToast('Unknown API type for cURL generation');
