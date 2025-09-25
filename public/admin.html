@@ -1029,7 +1029,6 @@
                     document.getElementById('loginForm').classList.add('hidden');
                     document.getElementById('adminPanel').classList.remove('hidden');
                     loadEnvVars();
-                    loadLoggingStatus();
                     // Fix header positioning after panel is shown
                     setTimeout(adjustStickyHeaderPositioning, 100);
                 } else {
@@ -2581,16 +2580,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
         }
         
         // Logging functionality
-        async function loadLoggingStatus() {
-            try {
-                const response = await fetch('/admin/api/logs');
-                const data = await response.json();
-            } catch (error) {
-                console.error('Failed to load logging status:', error);
-            }
-        }
-        
-        
+
         async function handleRefreshLogs(button) {
             // Add spinning animation to reload button
             if (button) {
@@ -2912,7 +2902,6 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                     document.getElementById('loginForm').classList.add('hidden');
                     document.getElementById('adminPanel').classList.remove('hidden');
                     loadEnvVars();
-                    loadLoggingStatus();
                     // Fix header positioning after panel is shown
                     setTimeout(adjustStickyHeaderPositioning, 100);
                 }
