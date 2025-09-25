@@ -1252,9 +1252,10 @@
                                             type="text"
                                             id="accessKey_${provider.apiType}_${provider.name}"
                                             value="${provider.accessKey || ''}"
+                                            data-original="${provider.accessKey || ''}"
                                             class="input-field w-full px-3 py-2 pr-28 text-xs rounded transition-colors font-mono"
                                             placeholder="Enter access key or leave empty"
-                                            onblur="saveAccessKey('${provider.apiType}', '${provider.name}')"
+                                            oninput="checkForChanges('accessKey', '${provider.apiType}', '${provider.name}')"
                                             onkeypress="if(event.key === 'Enter') saveAccessKey('${provider.apiType}', '${provider.name}')"
                                         >
                                         <div class="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
@@ -1277,12 +1278,13 @@
                                                 </svg>
                                             </button>
                                             <button
+                                                id="saveBtn_accessKey_${provider.apiType}_${provider.name}"
                                                 onclick="saveAccessKey('${provider.apiType}', '${provider.name}')"
-                                                class="text-primary hover:text-primary/80 transition-colors p-1"
+                                                class="text-muted-foreground hover:text-foreground transition-colors p-1"
                                                 title="Save access key"
                                             >
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
                                                 </svg>
                                             </button>
                                         </div>
@@ -1295,18 +1297,20 @@
                                             type="text"
                                             id="defaultModel_${provider.apiType}_${provider.name}"
                                             value="${provider.defaultModel || ''}"
+                                            data-original="${provider.defaultModel || ''}"
                                             class="input-field w-full px-3 py-2 pr-10 text-xs rounded transition-colors"
                                             placeholder="${provider.apiType === 'openai' ? 'e.g., gpt-4o-mini' : 'e.g., gemini-1.5-flash'}"
-                                            onblur="saveDefaultModel('${provider.apiType}', '${provider.name}')"
+                                            oninput="checkForChanges('defaultModel', '${provider.apiType}', '${provider.name}')"
                                             onkeypress="if(event.key === 'Enter') saveDefaultModel('${provider.apiType}', '${provider.name}')"
                                         >
                                         <button
+                                            id="saveBtn_defaultModel_${provider.apiType}_${provider.name}"
                                             onclick="saveDefaultModel('${provider.apiType}', '${provider.name}')"
-                                            class="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors p-1"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
                                             title="Save model"
                                         >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
                                             </svg>
                                         </button>
                                     </div>
@@ -1969,6 +1973,37 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             }
         }
 
+        // Check for changes in input fields and update save button color
+        function checkForChanges(fieldType, apiType, providerName) {
+            const inputId = `${fieldType}_${apiType}_${providerName}`;
+            const input = document.getElementById(inputId);
+            const saveBtnId = `saveBtn_${fieldType}_${apiType}_${providerName}`;
+            const saveBtn = document.getElementById(saveBtnId);
+
+            if (!input || !saveBtn) return;
+
+            const originalValue = input.getAttribute('data-original') || '';
+            const currentValue = input.value.trim();
+
+            if (currentValue !== originalValue) {
+                // Has unsaved changes - make button green
+                if (fieldType === 'accessKey') {
+                    saveBtn.className = 'text-green-500 hover:text-green-600 transition-colors p-1';
+                } else {
+                    saveBtn.className = 'absolute right-2 top-1/2 -translate-y-1/2 text-green-500 hover:text-green-600 transition-colors p-1';
+                }
+                saveBtn.title = 'Save changes';
+            } else {
+                // No changes - keep button muted
+                if (fieldType === 'accessKey') {
+                    saveBtn.className = 'text-muted-foreground hover:text-foreground transition-colors p-1';
+                } else {
+                    saveBtn.className = 'absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1';
+                }
+                saveBtn.title = fieldType === 'accessKey' ? 'Save access key' : 'Save model';
+            }
+        }
+
         // ACCESS_KEY Management Functions
         function generateAccessKey(apiType, providerName) {
             // Generate a random access key
@@ -1982,7 +2017,9 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             const input = document.getElementById(inputId);
             if (input) {
                 input.value = key;
-                showSuccessToast('Generated new access key');
+                // Trigger change detection to show save button in green
+                checkForChanges('accessKey', apiType, providerName);
+                showSuccessToast('Generated new access key - click save to apply');
             }
         }
 
@@ -2024,6 +2061,11 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 });
 
                 if (response.ok) {
+                    // Update the data-original attribute to the new value
+                    input.setAttribute('data-original', defaultModel);
+                    // Reset the save button color
+                    checkForChanges('defaultModel', apiType, providerName);
+
                     renderEnvVars();
                     if (defaultModel) {
                         showSuccessToast(`🎯 Default model saved for provider '${providerName}': ${defaultModel}`);
@@ -2064,6 +2106,11 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 });
 
                 if (response.ok) {
+                    // Update the data-original attribute to the new value
+                    input.setAttribute('data-original', accessKey);
+                    // Reset the save button color
+                    checkForChanges('accessKey', apiType, providerName);
+
                     renderEnvVars();
                     if (accessKey) {
                         showSuccessToast(`🔐 Access key saved for provider '${providerName}'`);
