@@ -1103,7 +1103,8 @@
                                 apiType: apiType,
                                 keys: [],
                                 baseUrl: '',
-                                accessKey: ''
+                                accessKey: '',
+                                defaultModel: ''
                             };
                         }
                         providers[providerKey].keys = value.split(',').map(k => k.trim()).filter(k => k);
@@ -1121,7 +1122,8 @@
                                 apiType: apiType,
                                 keys: [],
                                 baseUrl: '',
-                                accessKey: ''
+                                accessKey: '',
+                                defaultModel: ''
                             };
                         }
                         providers[providerKey].baseUrl = value;
@@ -1144,27 +1146,27 @@
                             };
                         }
                         providers[providerKey].accessKey = value;
-                    } else if (key.endsWith('_DEFAULT_MODEL') && value) {
-                        // Extract API_TYPE and PROVIDER from key
-                        const parts = key.replace('_DEFAULT_MODEL', '').split('_');
-                        if (parts.length < 2) continue;
-
-                        const apiType = parts[0].toLowerCase();
-                        const providerName = parts.slice(1).join('_').toLowerCase();
-                        const providerKey = `${apiType}_${providerName}`;
-
-                        if (!providers[providerKey]) {
-                            providers[providerKey] = {
-                                name: providerName,
-                                apiType: apiType,
-                                keys: [],
-                                baseUrl: '',
-                                accessKey: '',
-                                defaultModel: ''
-                            };
-                        }
-                        providers[providerKey].defaultModel = value;
                     }
+                } else if (key.endsWith('_DEFAULT_MODEL') && value) {
+                    // Extract API_TYPE and PROVIDER from key
+                    const parts = key.replace('_DEFAULT_MODEL', '').split('_');
+                    if (parts.length < 2) continue;
+
+                    const apiType = parts[0].toLowerCase();
+                    const providerName = parts.slice(1).join('_').toLowerCase();
+                    const providerKey = `${apiType}_${providerName}`;
+
+                    if (!providers[providerKey]) {
+                        providers[providerKey] = {
+                            name: providerName,
+                            apiType: apiType,
+                            keys: [],
+                            baseUrl: '',
+                            accessKey: '',
+                            defaultModel: ''
+                        };
+                    }
+                    providers[providerKey].defaultModel = value;
                 }
             }
             
@@ -1857,7 +1859,9 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                                     name: providerName,
                                     apiType: apiType,
                                     keys: value,
-                                    baseUrl: ''
+                                    baseUrl: '',
+                                    accessKey: '',
+                                    defaultModel: ''
                                 };
                             }
                         } else {
@@ -1871,6 +1875,8 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                                     apiType: apiType,
                                     keys: value,
                                     baseUrl: '',
+                                    accessKey: '',
+                                    defaultModel: '',
                                     legacy: true
                                 };
                             }
@@ -1887,7 +1893,9 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                                     name: providerName,
                                     apiType: apiType,
                                     keys: '',
-                                    baseUrl: value
+                                    baseUrl: value,
+                                    accessKey: '',
+                                    defaultModel: ''
                                 };
                             } else {
                                 providers[providerKey].baseUrl = value;
@@ -1901,6 +1909,26 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                                 if (providers[providerKey]) {
                                     providers[providerKey].baseUrl = value;
                                 }
+                            }
+                        }
+                    } else if (key.endsWith('_ACCESS_KEY') && value) {
+                        const match = key.match(/^(.+)_(.+)_ACCESS_KEY$/);
+                        if (match && match.length >= 3) {
+                            const apiType = match[1];
+                            const providerName = match[2];
+                            const providerKey = `${apiType}_${providerName}`;
+                            if (providers[providerKey]) {
+                                providers[providerKey].accessKey = value;
+                            }
+                        }
+                    } else if (key.endsWith('_DEFAULT_MODEL') && value) {
+                        const match = key.match(/^(.+)_(.+)_DEFAULT_MODEL$/);
+                        if (match && match.length >= 3) {
+                            const apiType = match[1];
+                            const providerName = match[2];
+                            const providerKey = `${apiType}_${providerName}`;
+                            if (providers[providerKey]) {
+                                providers[providerKey].defaultModel = value;
                             }
                         }
                     }
@@ -1931,6 +1959,12 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                         }
                         if (provider.baseUrl) {
                             envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_BASE_URL=${provider.baseUrl}\n`;
+                        }
+                        if (provider.accessKey) {
+                            envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_ACCESS_KEY=${provider.accessKey}\n`;
+                        }
+                        if (provider.defaultModel) {
+                            envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_DEFAULT_MODEL=${provider.defaultModel}\n`;
                         }
                         envContent += '\n';
                     }

@@ -730,9 +730,9 @@ class ProxyServer {
 
         if (key === 'PORT' || key === 'ADMIN_PASSWORD') {
           basicConfig[key] = value;
-        } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL') || key.endsWith('_ACCESS_KEY')) {
+        } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL') || key.endsWith('_ACCESS_KEY') || key.endsWith('_DEFAULT_MODEL')) {
           // Extract provider info
-          const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL|ACCESS_KEY)$/);
+          const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL|ACCESS_KEY|DEFAULT_MODEL)$/);
           if (match) {
             const apiType = match[1];
             const providerName = match[2];
@@ -745,7 +745,8 @@ class ProxyServer {
                 providerName,
                 keys: '',
                 baseUrl: '',
-                accessKey: ''
+                accessKey: '',
+                defaultModel: ''
               };
             }
 
@@ -755,6 +756,8 @@ class ProxyServer {
               providers[providerKey].baseUrl = value;
             } else if (keyType === 'ACCESS_KEY') {
               providers[providerKey].accessKey = value;
+            } else if (keyType === 'DEFAULT_MODEL') {
+              providers[providerKey].defaultModel = value;
             }
           } else {
             otherConfig[key] = value;
@@ -796,6 +799,9 @@ class ProxyServer {
           if (provider.accessKey) {
             envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
           }
+          if (provider.defaultModel) {
+            envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
+          }
           envContent += '\n';
         }
       }
@@ -812,6 +818,9 @@ class ProxyServer {
           if (provider.accessKey) {
             envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
           }
+          if (provider.defaultModel) {
+            envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
+          }
           envContent += '\n';
         }
       }
@@ -827,6 +836,9 @@ class ProxyServer {
           }
           if (provider.accessKey) {
             envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
+          }
+          if (provider.defaultModel) {
+            envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
           }
           envContent += '\n';
         }
