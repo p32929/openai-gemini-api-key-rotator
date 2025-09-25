@@ -2221,18 +2221,20 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                         type="text"
                         id="rename-input-${apiType}-${providerName}"
                         value="${currentName}"
+                        data-original="${currentName}"
                         class="px-2 py-1 text-sm border border-border rounded bg-input text-foreground"
                         style="width: 150px;"
-                        oninput="handleProviderNameInput(this)"
+                        oninput="handleProviderNameInput(this, '${apiType}', '${providerName}')"
                         onkeydown="handleRenameKeyPress(event, '${apiType}', '${providerName}')"
                     />
                     <button
+                        id="rename-save-btn-${apiType}-${providerName}"
                         onclick="confirmRenameProvider('${apiType}', '${providerName}')"
-                        class="text-success hover:text-success/80 p-0.5"
-                        title="Save"
+                        class="text-muted-foreground hover:text-foreground p-0.5"
+                        title="Save name"
                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
                         </svg>
                     </button>
                     <button
@@ -2257,7 +2259,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             }, 0);
         }
 
-        function handleProviderNameInput(input) {
+        function handleProviderNameInput(input, apiType, providerName) {
             // Convert to lowercase and keep only letters and numbers
             const originalValue = input.value;
             const cleanedValue = input.value.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -2268,6 +2270,21 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 // Show warning if any special characters were removed
                 if (/[^a-zA-Z0-9]/.test(originalValue)) {
                     showWarningToast('Only lowercase letters and numbers are allowed in provider names');
+                }
+            }
+
+            // Check for changes and update save button color
+            const saveBtn = document.getElementById(`rename-save-btn-${apiType}-${providerName}`);
+            if (saveBtn) {
+                const originalName = input.getAttribute('data-original') || '';
+                const currentValue = input.value.trim();
+
+                if (currentValue !== originalName && currentValue !== '') {
+                    // Has unsaved changes - make button green
+                    saveBtn.className = 'text-green-500 hover:text-green-600 p-0.5';
+                } else {
+                    // No changes or empty - keep default color
+                    saveBtn.className = 'text-muted-foreground hover:text-foreground p-0.5';
                 }
             }
         }

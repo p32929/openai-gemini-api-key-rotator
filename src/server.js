@@ -63,13 +63,48 @@ class ProxyServer {
     
     try {
       const body = await this.readRequestBody(req);
-      
+
+      // Serve static files from public directory
+      if (req.url === '/tailwind-3.4.17.js' && (req.method === 'GET' || req.method === 'HEAD')) {
+        try {
+          const filePath = path.join(process.cwd(), 'public', 'tailwind-3.4.17.js');
+          console.log(`[STATIC] Serving file from: ${filePath}`);
+
+          if (req.method === 'HEAD') {
+            // For HEAD requests, just send headers without body
+            const stats = fs.statSync(filePath);
+            res.writeHead(200, {
+              'Content-Type': 'application/javascript',
+              'Content-Length': stats.size,
+              'Cache-Control': 'public, max-age=31536000' // Cache for 1 year
+            });
+            res.end();
+          } else {
+            // For GET requests, send the file content
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            res.writeHead(200, {
+              'Content-Type': 'application/javascript',
+              'Content-Length': Buffer.byteLength(fileContent),
+              'Cache-Control': 'public, max-age=31536000' // Cache for 1 year
+            });
+            res.end(fileContent);
+          }
+          console.log(`[STATIC] Successfully served: ${req.url}`);
+          return;
+        } catch (error) {
+          console.log(`[STATIC] Error serving file: ${error.message}`);
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end('File not found');
+          return;
+        }
+      }
+
       // Handle admin routes
       if (req.url.startsWith('/admin')) {
         await this.handleAdminRequest(req, res, body);
         return;
       }
-      
+
       // Handle common browser requests that aren't API calls
       if (req.url === '/favicon.ico' || req.url === '/robots.txt') {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
