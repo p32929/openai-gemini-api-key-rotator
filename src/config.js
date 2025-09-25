@@ -106,7 +106,7 @@ class Config {
           const provider = parts.length === 1 ? apiType : parts.slice(1).join('_').toLowerCase();
           
           if (!providerConfigs.has(provider)) {
-            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null });
+            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null, defaultModel: null });
           }
           
           providerConfigs.get(provider).keys = this.parseApiKeys(value);
@@ -121,7 +121,7 @@ class Config {
           const provider = parts.length === 1 ? apiType : parts.slice(1).join('_').toLowerCase();
           
           if (!providerConfigs.has(provider)) {
-            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null });
+            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null, defaultModel: null });
           }
           
           providerConfigs.get(provider).baseUrl = value.trim();
@@ -135,10 +135,24 @@ class Config {
           const provider = parts.length === 1 ? apiType : parts.slice(1).join('_').toLowerCase();
           
           if (!providerConfigs.has(provider)) {
-            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null });
+            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null, defaultModel: null });
           }
           
           providerConfigs.get(provider).accessKey = value.trim();
+        }
+      } else if (key.endsWith('_DEFAULT_MODEL') && value) {
+        // Extract API_TYPE and PROVIDER from key
+        const parts = key.replace('_DEFAULT_MODEL', '').split('_');
+        if (parts.length >= 1) {
+          const apiType = parts[0].toLowerCase();
+          // If no provider name specified, use the API type as provider name (default)
+          const provider = parts.length === 1 ? apiType : parts.slice(1).join('_').toLowerCase();
+
+          if (!providerConfigs.has(provider)) {
+            providerConfigs.set(provider, { apiType, keys: [], baseUrl: null, accessKey: null, defaultModel: null });
+          }
+
+          providerConfigs.get(provider).defaultModel = value.trim();
         }
       }
     }
