@@ -505,7 +505,7 @@
                                         id="newProviderBaseUrl" 
                                         class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors" 
                                         placeholder="https://api.example.com/v1 (leave empty for default)"
-                                        oninput="updateProviderPreview()"
+                                        oninput="handleBaseUrlInput(this); updateProviderPreview()"
                                     >
                                     <p class="text-muted-foreground text-xs mt-1">Leave empty for default URL, or provide both name and base URL for custom provider</p>
                                 </div>
@@ -1276,7 +1276,7 @@
                                     <label class="block text-xs text-muted-foreground mb-1.5 font-medium">Your Endpoint URL</label>
                                     <div class="relative">
                                         <div class="font-mono text-foreground bg-background border border-border px-3 py-2 pr-10 rounded text-xs">
-                                            <span class="text-muted-foreground">${window.location.protocol}//${window.location.host}/</span><span class="text-primary font-semibold">${provider.name}</span><span class="text-muted-foreground">/v1/*</span>
+                                            <span class="text-muted-foreground">${window.location.protocol}//${window.location.host}/</span><span class="text-primary font-semibold">${provider.name}</span><span class="text-muted-foreground">/*</span>
                                         </div>
                                         <button
                                             onclick="copyEndpointUrl('${provider.name}')"
@@ -1518,6 +1518,12 @@
             const apiType = document.getElementById('newProviderApiType').value;
             let baseUrl = document.getElementById('newProviderBaseUrl').value.trim();
             const resultDiv = document.getElementById('newProviderResult');
+
+            // Check for trailing slash in base URL
+            if (baseUrl && baseUrl.endsWith('/')) {
+                showErrorToast('Please remove the trailing slash from the base URL before saving');
+                return;
+            }
             
             // Collect all API keys
             const keyInputs = document.querySelectorAll('.new-provider-key');
@@ -1803,7 +1809,7 @@
         // Copy endpoint URL for a provider
         async function copyEndpointUrl(providerName) {
             const baseUrl = `${window.location.protocol}//${window.location.host}`;
-            const endpointUrl = `${baseUrl}/${providerName}/v1`;
+            const endpointUrl = `${baseUrl}/${providerName}`;
             await copyToClipboard(endpointUrl, `Endpoint URL copied: ${endpointUrl}`);
         }
 
@@ -1830,7 +1836,7 @@
                 const model = defaultModel || 'YOUR_MODEL_NAME';
 
                 // OpenAI-compatible cURL command
-                curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/chat/completions" \\
+                curlCommand = `curl -X POST "${baseUrl}/${providerName}/chat/completions" \\
 ${authHeader}  -H "Content-Type: application/json" \\
   -d '{
     "model": "${model}",
@@ -1853,7 +1859,7 @@ ${authHeader}  -H "Content-Type: application/json" \\
                 const model = defaultModel || 'YOUR_MODEL_NAME';
 
                 // Gemini-compatible cURL command
-                curlCommand = `curl -X POST "${baseUrl}/${providerName}/v1/models/${model}:generateContent" \\
+                curlCommand = `curl -X POST "${baseUrl}/${providerName}/models/${model}:generateContent" \\
 ${googApiKeyHeader}  -H "Content-Type: application/json" \\
   -d '{
     "contents": [
@@ -2442,6 +2448,40 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
 
                 // Keep button always in default color (no green)
                 saveBtn.className = 'text-muted-foreground hover:text-foreground p-0.5';
+            }
+        }
+
+        function handleBaseUrlInput(input) {
+            // Check for trailing slash and show error
+            const value = input.value;
+            const errorElement = input.parentElement.querySelector('.base-url-error');
+
+            if (value.endsWith('/')) {
+                // Add error styling
+                input.classList.add('border-destructive', 'focus:ring-destructive');
+                input.classList.remove('border-border');
+
+                // Create or update error message
+                if (!errorElement) {
+                    const error = document.createElement('p');
+                    error.className = 'base-url-error text-destructive text-xs mt-1';
+                    error.textContent = 'Base URL should not end with a trailing slash (/)';
+                    input.parentElement.appendChild(error);
+                } else {
+                    errorElement.textContent = 'Base URL should not end with a trailing slash (/)';
+                }
+
+                // Show error toast
+                showErrorToast('Base URL cannot end with a trailing slash');
+            } else {
+                // Remove error styling
+                input.classList.remove('border-destructive', 'focus:ring-destructive');
+                input.classList.add('border-border');
+
+                // Remove error message
+                if (errorElement) {
+                    errorElement.remove();
+                }
             }
         }
 

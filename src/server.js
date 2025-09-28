@@ -31,15 +31,15 @@ class ProxyServer {
       
       const providers = this.config.getProviders();
       for (const [providerName, config] of providers.entries()) {
-        console.log(`Provider '${providerName}' (${config.apiType}): /${providerName}/v1/* → ${config.baseUrl}`);
+        console.log(`Provider '${providerName}' (${config.apiType}): /${providerName}/* → ${config.baseUrl}`);
       }
       
       // Backward compatibility logging
       if (this.config.hasGeminiKeys()) {
-        console.log(`Legacy Gemini endpoints: /gemini/v1/* and /gemini/v1beta/*`);
+        console.log(`Legacy Gemini endpoints: /gemini/*`);
       }
       if (this.config.hasOpenaiKeys()) {
-        console.log(`Legacy OpenAI endpoints: /openai/v1/*`);
+        console.log(`Legacy OpenAI endpoints: /openai/*`);
       }
       
       if (this.config.hasAdminPassword()) {
@@ -181,7 +181,7 @@ class ProxyServer {
           this.logApiRequest(requestId, req.method, req.url, 'unknown', 400, responseTime, 'Invalid API path', clientIp);
         }
         
-        this.sendError(res, 400, 'Invalid API path. Use /{provider}/v1/* format');
+        this.sendError(res, 400, 'Invalid API path. Use /{provider}/* format');
         return;
       }
 
@@ -293,119 +293,52 @@ class ProxyServer {
     const urlObj = new URL(url, 'http://localhost');
     const path = urlObj.pathname;
     
-    // Parse new provider format: /{provider}/{version}/*
+    // Parse new provider format: /{provider}/* (no version required)
     const pathParts = path.split('/').filter(part => part.length > 0);
-    if (pathParts.length >= 2) {
+    if (pathParts.length >= 1) {
       const providerName = pathParts[0].toLowerCase();
       const provider = this.config.getProvider(providerName);
 
       if (provider) {
-        // Extract the API path after /{provider}/{version}
+        // Extract the API path after /{provider}
         const apiPath = '/' + pathParts.slice(1).join('/') + urlObj.search;
 
         return {
           providerName: providerName,
           apiType: provider.apiType,
-          path: this.adjustProviderPath(apiPath, provider.baseUrl),
+          path: apiPath, // Use path as-is, no adjustment needed
           provider: provider
         };
       }
     }
     
-    // Backward compatibility - Legacy Gemini routes: /gemini/{version}/*
+    // Backward compatibility - Legacy Gemini routes: /gemini/*
     if (path.startsWith('/gemini/')) {
       const geminiPath = path.substring(7); // Remove '/gemini'
-      // Check if it starts with any version pattern (/vXXX/)
-      if (geminiPath.match(/^\/v[^\/]+\//)) {
-        // Check if base URL already includes version path
-        const baseUrl = this.config.getGeminiBaseUrl();
-        const baseUrlHasVersion = baseUrl.match(/\/v[^\/]+$/);
-        
-        return {
-          providerName: 'gemini',
-          apiType: 'gemini',
-          // If base URL already has version, adjust path accordingly
-          path: baseUrlHasVersion ? this.adjustGeminiPath(geminiPath, baseUrl) + urlObj.search : geminiPath + urlObj.search,
-          legacy: true
-        };
-      }
+
+      return {
+        providerName: 'gemini',
+        apiType: 'gemini',
+        path: geminiPath + urlObj.search,
+        legacy: true
+      };
     }
     
-    // Backward compatibility - Legacy OpenAI routes: /openai/{version}/*
+    // Backward compatibility - Legacy OpenAI routes: /openai/*
     if (path.startsWith('/openai/')) {
       const openaiPath = path.substring(7); // Remove '/openai'
-      // Check if it starts with any version pattern (/vXXX/)
-      if (openaiPath.match(/^\/v[^\/]+\//)) {
-        // Check if base URL already includes version path
-        const baseUrl = this.config.getOpenaiBaseUrl();
-        const baseUrlHasVersion = baseUrl.match(/\/v[^\/]+$/);
-        
-        return {
-          providerName: 'openai',
-          apiType: 'openai',
-          // If base URL already has version, remove it from the path to avoid duplication
-          path: baseUrlHasVersion ? this.adjustOpenaiPath(openaiPath, baseUrl) + urlObj.search : openaiPath + urlObj.search,
-          legacy: true
-        };
-      }
+
+      return {
+        providerName: 'openai',
+        apiType: 'openai',
+        path: openaiPath + urlObj.search,
+        legacy: true
+      };
     }
     
     return null;
   }
 
-  adjustProviderPath(apiPath, baseUrl) {
-    // Simple path adjustment to avoid duplication
-    // If the base URL already ends with the beginning of our path, remove the duplicate part
-    
-    if (apiPath.startsWith('/')) {
-      // Find the longest common suffix of baseUrl and prefix of apiPath
-      const pathParts = apiPath.split('/').filter(part => part.length > 0);
-      
-      for (let i = pathParts.length; i > 0; i--) {
-        const pathPrefix = '/' + pathParts.slice(0, i).join('/');
-        if (baseUrl.endsWith(pathPrefix)) {
-          // Remove the duplicate part from the path
-          return '/' + pathParts.slice(i).join('/');
-        }
-      }
-    }
-    
-    return apiPath; // No adjustment needed
-  }
-
-  adjustGeminiPath(geminiPath, baseUrl) {
-    // For Gemini, handle version path adjustments dynamically
-    const baseVersionMatch = baseUrl.match(/\/v[^\/]+$/);
-    const pathVersionMatch = geminiPath.match(/^\/v[^\/]+\//);
-    
-    if (baseVersionMatch && pathVersionMatch) {
-      const baseVersion = baseVersionMatch[0];
-      const pathVersion = pathVersionMatch[0].slice(0, -1); // Remove trailing /
-      
-      if (baseVersion === pathVersion) {
-        return geminiPath.substring(pathVersion.length);
-      }
-    }
-    
-    return geminiPath; // No adjustment needed
-  }
-
-  adjustOpenaiPath(openaiPath, baseUrl) {
-    // For OpenAI, handle version path adjustments dynamically
-    const baseVersionMatch = baseUrl.match(/\/v[^\/]+$/);
-    const pathVersionMatch = openaiPath.match(/^\/v[^\/]+\//);
-    
-    if (baseVersionMatch && pathVersionMatch) {
-      const baseVersion = baseVersionMatch[0];
-      const pathVersion = pathVersionMatch[0].slice(0, -1); // Remove trailing /
-      
-      if (baseVersion === pathVersion) {
-        return openaiPath.substring(pathVersion.length);
-      }
-    }
-    
-    return openaiPath; // No adjustment needed
-  }
 
   async getProviderClient(providerName, provider, legacy = false) {
     // Handle legacy clients
