@@ -99,6 +99,64 @@ class ProxyServer {
         }
       }
 
+      // Handle root route with welcome message
+      if (req.url === '/' || req.url === '') {
+        const packageInfo = require('../package.json');
+        const welcomeHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>${packageInfo.name}</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                max-width: 600px;
+                margin: 100px auto;
+                padding: 20px;
+                text-align: center;
+                background: #f5f5f5;
+              }
+              h1 {
+                color: #333;
+                margin-bottom: 20px;
+              }
+              p {
+                color: #666;
+                font-size: 18px;
+                margin: 20px 0;
+              }
+              a {
+                color: #0066cc;
+                text-decoration: none;
+                font-weight: 500;
+              }
+              a:hover {
+                text-decoration: underline;
+              }
+              .container {
+                background: white;
+                padding: 40px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>Hello from ${packageInfo.name}!</h1>
+              <p>Version ${packageInfo.version}</p>
+              <p>To access the admin panel, please visit:</p>
+              <p><a href="/admin">http://localhost:${this.config.getPort()}/admin</a></p>
+            </div>
+          </body>
+          </html>
+        `;
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(welcomeHtml);
+        return;
+      }
+
       // Handle admin routes
       if (req.url.startsWith('/admin')) {
         await this.handleAdminRequest(req, res, body);

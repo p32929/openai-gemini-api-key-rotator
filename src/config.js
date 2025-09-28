@@ -13,47 +13,64 @@ class Config {
 
   loadConfig() {
     const envPath = path.join(process.cwd(), '.env');
-    
+
     console.log(`[CONFIG] Loading configuration from ${envPath}`);
-    
+
     if (!fs.existsSync(envPath)) {
+      console.error('\n❌ ERROR: .env file not found!');
+      console.error('Please create a .env file with the required configuration.');
+      console.error('You can copy .env.example to .env and update the values.\n');
       throw new Error('.env file not found');
     }
 
     const envContent = fs.readFileSync(envPath, 'utf8');
     const envVars = this.parseEnvFile(envContent);
 
+    // Check required fields FIRST
+    const missingFields = [];
+
     if (!envVars.PORT) {
-      throw new Error('PORT is required in .env file');
+      missingFields.push('PORT');
     }
-    
+
+    if (!envVars.ADMIN_PASSWORD) {
+      missingFields.push('ADMIN_PASSWORD');
+    }
+
+    if (missingFields.length > 0) {
+      console.error('\n❌ ERROR: Required fields missing in .env file!');
+      console.error(`Missing fields: ${missingFields.join(', ')}`);
+      console.error('\nBoth PORT and ADMIN_PASSWORD are required to run the server.');
+      console.error('Example configuration:');
+      console.error('  PORT=8990');
+      console.error('  ADMIN_PASSWORD=your-secure-password\n');
+      throw new Error(`Required fields missing: ${missingFields.join(', ')}`);
+    }
+
+    // Set required fields
     this.port = parseInt(envVars.PORT);
-    this.adminPassword = envVars.ADMIN_PASSWORD || null;
-    
+    this.adminPassword = envVars.ADMIN_PASSWORD;
+
+    console.log(`[CONFIG] Port: ${this.port}`);
+    console.log(`[CONFIG] Admin panel enabled with password authentication`);
+
     // Clear existing providers
     this.providers.clear();
-    
+
     // Parse new provider format and maintain backward compatibility
     this.parseProviders(envVars);
     this.parseBackwardCompatibility(envVars);
 
-    console.log(`[CONFIG] Port: ${this.port}`);
     console.log(`[CONFIG] Found ${this.providers.size} providers configured`);
-    
+
     // Log each provider
     for (const [providerName, config] of this.providers.entries()) {
       const maskedKeys = config.keys.map(key => this.maskApiKey(key));
       console.log(`[CONFIG] Provider '${providerName}' (${config.apiType}): ${config.keys.length} keys [${maskedKeys.join(', ')}] → ${config.baseUrl}`);
     }
-    
-    // Check if admin panel is configured
-    if (this.adminPassword) {
-      console.log(`[CONFIG] Admin panel enabled - providers can be managed via admin interface`);
-    } else {
-      console.log(`[CONFIG] No admin password set - at least one provider must be configured in .env`);
-      if (this.providers.size === 0) {
-        throw new Error('Either ADMIN_PASSWORD must be set (to enable admin panel) or at least one provider must be configured in .env file');
-      }
+
+    if (this.providers.size === 0) {
+      console.log(`[CONFIG] No providers configured yet - use the admin panel at http://localhost:${this.port}/admin to add providers`);
     }
   }
 

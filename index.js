@@ -28,11 +28,6 @@ function main() {
       console.log('[INIT] No legacy OpenAI keys found - can be configured via admin panel');
     }
     
-    // Check if we have at least one provider configured or admin panel enabled
-    if (config.getProviders().size === 0 && !config.hasAdminPassword()) {
-      throw new Error('No providers configured and no admin password set. Please configure at least one provider or set ADMIN_PASSWORD.');
-    }
-    
     const server = new ProxyServer(config, geminiClient, openaiClient);
     server.start();
     

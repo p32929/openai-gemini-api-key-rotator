@@ -1173,6 +1173,53 @@
             Object.values(providers).forEach((provider, index) => {
                 const providerDiv = document.createElement('div');
                 providerDiv.className = 'key-row';
+
+                // Determine initial button state for access key
+                let accessKeyButtonHtml, accessKeyAction, accessKeyClass, accessKeyStyle, accessKeyTitle;
+
+                if (provider.accessKey) {
+                    // Has value - show delete icon
+                    accessKeyButtonHtml = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                       </svg>`;
+                    accessKeyAction = `deleteAccessKey('${provider.apiType}', '${provider.name}')`;
+                    accessKeyClass = 'text-muted-foreground hover:text-foreground p-1';
+                    accessKeyStyle = '';
+                    accessKeyTitle = 'Delete';
+                } else {
+                    // Empty - show disabled save icon
+                    accessKeyButtonHtml = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
+                       </svg>`;
+                    accessKeyAction = '';  // No action when disabled
+                    accessKeyClass = 'cursor-not-allowed p-1';
+                    accessKeyStyle = 'pointer-events: none; opacity: 0.3;';
+                    accessKeyTitle = 'Nothing to save';
+                }
+
+                // Determine initial button state for default model
+                let defaultModelButtonHtml, defaultModelAction, defaultModelClass, defaultModelStyle, defaultModelTitle;
+
+                if (provider.defaultModel) {
+                    // Has value - show delete icon
+                    defaultModelButtonHtml = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                       </svg>`;
+                    defaultModelAction = `deleteDefaultModel('${provider.apiType}', '${provider.name}')`;
+                    defaultModelClass = 'absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1';
+                    defaultModelStyle = '';
+                    defaultModelTitle = 'Delete';
+                } else {
+                    // Empty - show disabled save icon
+                    defaultModelButtonHtml = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
+                       </svg>`;
+                    defaultModelAction = '';  // No action when disabled
+                    defaultModelClass = 'absolute right-2 top-1/2 -translate-y-1/2 cursor-not-allowed p-1';
+                    defaultModelStyle = 'pointer-events: none; opacity: 0.3;';
+                    defaultModelTitle = 'Nothing to save';
+                }
+
                 providerDiv.innerHTML = `
                     <div class="space-y-4">
                         <!-- Header with provider name and actions -->
@@ -1280,13 +1327,12 @@
                                             </button>
                                             <button
                                                 id="saveBtn_accessKey_${provider.apiType}_${provider.name}"
-                                                onclick="saveAccessKey('${provider.apiType}', '${provider.name}')"
-                                                class="text-muted-foreground hover:text-foreground transition-colors p-1"
-                                                title="Save access key"
+                                                ${accessKeyAction ? `onclick="${accessKeyAction}"` : ''}
+                                                class="${accessKeyClass}"
+                                                style="${accessKeyStyle}"
+                                                title="${accessKeyTitle}"
                                             >
-                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
-                                                </svg>
+                                                ${accessKeyButtonHtml}
                                             </button>
                                         </div>
                                     </div>
@@ -1306,13 +1352,12 @@
                                         >
                                         <button
                                             id="saveBtn_defaultModel_${provider.apiType}_${provider.name}"
-                                            onclick="saveDefaultModel('${provider.apiType}', '${provider.name}')"
-                                            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
-                                            title="Save model"
+                                            ${defaultModelAction ? `onclick="${defaultModelAction}"` : ''}
+                                            class="${defaultModelClass}"
+                                            style="${defaultModelStyle}"
+                                            title="${defaultModelTitle}"
                                         >
-                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
-                                            </svg>
+                                            ${defaultModelButtonHtml}
                                         </button>
                                     </div>
                                 </div>
@@ -1981,14 +2026,21 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
         }
 
         async function deleteProvider(apiType, providerName) {
-            const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
-            const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
-            const accessKeyVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_ACCESS_KEY`;
+            const providerPrefix = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_`;
 
-            // Remove from envVars
-            delete envVars[keysVar];
-            delete envVars[baseUrlVar];
-            delete envVars[accessKeyVar];
+            // Delete all environment variables that start with the provider prefix
+            const keysToDelete = [];
+            for (const key in envVars) {
+                if (key.startsWith(providerPrefix)) {
+                    keysToDelete.push(key);
+                }
+            }
+
+            // Remove all matching keys from envVars
+            keysToDelete.forEach(key => {
+                console.log(`Deleting env var: ${key}`);
+                delete envVars[key];
+            });
 
             try {
                 const response = await fetch('/admin/api/env', {
@@ -1999,7 +2051,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
 
                 if (response.ok) {
                     renderEnvVars();
-                    showSuccessToast(`🗑️ Provider '${providerName}' deleted successfully`);
+                    showSuccessToast(`🗑️ Provider '${providerName}' deleted successfully (${keysToDelete.length} settings removed)`);
                 } else {
                     showErrorToast('Failed to delete provider');
                 }
@@ -2008,7 +2060,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             }
         }
 
-        // Check for changes in input fields and update save button color
+        // Check for changes in input fields and update save/delete button
         function checkForChanges(fieldType, apiType, providerName) {
             const inputId = `${fieldType}_${apiType}_${providerName}`;
             const input = document.getElementById(inputId);
@@ -2020,22 +2072,63 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             const originalValue = input.getAttribute('data-original') || '';
             const currentValue = input.value.trim();
 
+            // Determine button position class (without transitions for smooth state changes)
+            const positionClass = fieldType === 'accessKey'
+                ? 'text-muted-foreground hover:text-foreground p-1'
+                : 'absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1';
+
             if (currentValue !== originalValue) {
-                // Has unsaved changes - make button green
-                if (fieldType === 'accessKey') {
-                    saveBtn.className = 'text-green-500 hover:text-green-600 transition-colors p-1';
-                } else {
-                    saveBtn.className = 'absolute right-2 top-1/2 -translate-y-1/2 text-green-500 hover:text-green-600 transition-colors p-1';
-                }
+                // There are changes - show save icon (enabled)
+                saveBtn.className = positionClass;
                 saveBtn.title = 'Save changes';
+                saveBtn.style.pointerEvents = '';  // Re-enable pointer events
+                saveBtn.style.opacity = '1';  // Explicitly set to full opacity
+                saveBtn.onclick = () => {
+                    if (fieldType === 'accessKey') {
+                        saveAccessKey(apiType, providerName);
+                    } else {
+                        saveDefaultModel(apiType, providerName);
+                    }
+                };
+                saveBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
+                    </svg>
+                `;
+            } else if (originalValue && currentValue === originalValue) {
+                // No changes and has existing value - show delete icon
+                saveBtn.className = positionClass;
+                saveBtn.title = 'Delete';
+                saveBtn.style.pointerEvents = '';  // Re-enable pointer events
+                saveBtn.style.opacity = '1';  // Explicitly set to full opacity
+                saveBtn.onclick = () => {
+                    if (fieldType === 'accessKey') {
+                        deleteAccessKey(apiType, providerName);
+                    } else {
+                        deleteDefaultModel(apiType, providerName);
+                    }
+                };
+                saveBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                `;
             } else {
-                // No changes - keep button muted
-                if (fieldType === 'accessKey') {
-                    saveBtn.className = 'text-muted-foreground hover:text-foreground transition-colors p-1';
-                } else {
-                    saveBtn.className = 'absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1';
-                }
-                saveBtn.title = fieldType === 'accessKey' ? 'Save access key' : 'Save model';
+                // Empty field - show disabled save icon
+                const disabledClass = fieldType === 'accessKey'
+                    ? 'cursor-not-allowed p-1'
+                    : 'absolute right-2 top-1/2 -translate-y-1/2 cursor-not-allowed p-1';
+
+                saveBtn.className = disabledClass;
+                saveBtn.title = 'Nothing to save';
+                saveBtn.onclick = null;  // Disable click
+                saveBtn.style.pointerEvents = 'none';  // Prevent hover effects
+                saveBtn.style.opacity = '0.3';  // Make it very faded (only use inline style, not class)
+                saveBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M7 19V13H17V19H19V7.828L16.172 5H15V9H9V5H5V19H7ZM17 5V7H15V5H17ZM19 3L21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19Z"></path>
+                    </svg>
+                `;
             }
         }
 
@@ -2052,7 +2145,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             const input = document.getElementById(inputId);
             if (input) {
                 input.value = key;
-                // Trigger change detection to show save button in green
+                // Trigger change detection to update button
                 checkForChanges('accessKey', apiType, providerName);
                 showSuccessToast('Generated new access key - click save to apply');
             }
@@ -2159,7 +2252,75 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 showErrorToast(`Failed to save access key: ${error.message}`);
             }
         }
-        
+
+        async function deleteAccessKey(apiType, providerName) {
+            const inputId = `accessKey_${apiType}_${providerName}`;
+            const input = document.getElementById(inputId);
+
+            if (!input) return;
+
+            // Clear the input
+            input.value = '';
+
+            const accessKeyVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_ACCESS_KEY`;
+            delete envVars[accessKeyVar];
+
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+
+                if (response.ok) {
+                    // Update the data-original attribute
+                    input.setAttribute('data-original', '');
+                    // Update button
+                    checkForChanges('accessKey', apiType, providerName);
+                    renderEnvVars();
+                    showSuccessToast(`🔓 Access key removed for provider '${providerName}'`);
+                } else {
+                    showErrorToast('Failed to delete access key');
+                }
+            } catch (error) {
+                showErrorToast(`Failed to delete access key: ${error.message}`);
+            }
+        }
+
+        async function deleteDefaultModel(apiType, providerName) {
+            const inputId = `defaultModel_${apiType}_${providerName}`;
+            const input = document.getElementById(inputId);
+
+            if (!input) return;
+
+            // Clear the input
+            input.value = '';
+
+            const modelVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_DEFAULT_MODEL`;
+            delete envVars[modelVar];
+
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+
+                if (response.ok) {
+                    // Update the data-original attribute
+                    input.setAttribute('data-original', '');
+                    // Update button
+                    checkForChanges('defaultModel', apiType, providerName);
+                    renderEnvVars();
+                    showSuccessToast(`Default model removed for provider '${providerName}'`);
+                } else {
+                    showErrorToast('Failed to delete default model');
+                }
+            } catch (error) {
+                showErrorToast(`Failed to delete default model: ${error.message}`);
+            }
+        }
+
         async function testProviderKey(apiType, providerName, apiKey, keyIndex) {
             // Get provider's base URL
             const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
@@ -2273,19 +2434,14 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 }
             }
 
-            // Check for changes and update save button color
+            // Check for changes and update save button
             const saveBtn = document.getElementById(`rename-save-btn-${apiType}-${providerName}`);
             if (saveBtn) {
                 const originalName = input.getAttribute('data-original') || '';
                 const currentValue = input.value.trim();
 
-                if (currentValue !== originalName && currentValue !== '') {
-                    // Has unsaved changes - make button green
-                    saveBtn.className = 'text-green-500 hover:text-green-600 p-0.5';
-                } else {
-                    // No changes or empty - keep default color
-                    saveBtn.className = 'text-muted-foreground hover:text-foreground p-0.5';
-                }
+                // Keep button always in default color (no green)
+                saveBtn.className = 'text-muted-foreground hover:text-foreground p-0.5';
             }
         }
 
@@ -2332,28 +2488,34 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             }
 
             try {
-                // Get old values
-                const oldKeysVar = `${apiType.toUpperCase()}_${oldName.toUpperCase()}_API_KEYS`;
-                const oldBaseUrlVar = `${apiType.toUpperCase()}_${oldName.toUpperCase()}_BASE_URL`;
-                const newBaseUrlVar = `${apiType.toUpperCase()}_${newName.toUpperCase()}_BASE_URL`;
+                // Get all old values with the old provider prefix
+                const oldPrefix = `${apiType.toUpperCase()}_${oldName.toUpperCase()}_`;
+                const newPrefix = `${apiType.toUpperCase()}_${newName.toUpperCase()}_`;
 
-                const keys = envVars[oldKeysVar];
-                const baseUrl = envVars[oldBaseUrlVar];
+                // Find all environment variables with the old prefix
+                const oldVars = {};
+                for (const key in envVars) {
+                    if (key.startsWith(oldPrefix)) {
+                        oldVars[key] = envVars[key];
+                    }
+                }
 
-                if (!keys) {
+                if (Object.keys(oldVars).length === 0) {
                     showErrorToast('Provider not found');
                     return;
                 }
 
-                // Create new entries
-                envVars[newKeysVar] = keys;
-                if (baseUrl) {
-                    envVars[newBaseUrlVar] = baseUrl;
+                // Create new entries with the new prefix
+                for (const [oldKey, value] of Object.entries(oldVars)) {
+                    const suffix = oldKey.substring(oldPrefix.length); // Get the part after the prefix (API_KEYS, BASE_URL, etc.)
+                    const newKey = newPrefix + suffix;
+                    envVars[newKey] = value;
                 }
 
-                // Delete old entries
-                delete envVars[oldKeysVar];
-                delete envVars[oldBaseUrlVar];
+                // Delete all old entries
+                for (const key of Object.keys(oldVars)) {
+                    delete envVars[key];
+                }
 
                 // Save to server
                 const response = await fetch('/admin/api/env', {
@@ -2366,13 +2528,16 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                     showSuccessToast(`Provider renamed from '${oldName}' to '${newName}'`);
                     await loadEnvVars();
                 } else {
-                    // Rollback on error
-                    envVars[oldKeysVar] = keys;
-                    if (baseUrl) {
-                        envVars[oldBaseUrlVar] = baseUrl;
+                    // Rollback on error - restore old entries and remove new ones
+                    for (const [oldKey, value] of Object.entries(oldVars)) {
+                        envVars[oldKey] = value;
                     }
-                    delete envVars[newKeysVar];
-                    delete envVars[newBaseUrlVar];
+
+                    for (const [oldKey] of Object.entries(oldVars)) {
+                        const suffix = oldKey.substring(oldPrefix.length);
+                        const newKey = newPrefix + suffix;
+                        delete envVars[newKey];
+                    }
 
                     showErrorToast('Failed to rename provider');
                 }
@@ -2383,21 +2548,27 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
         }
 
         async function deleteProviderKey(apiType, providerName, keyIndex) {
-            
+
             const keysVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
             const keys = envVars[keysVar] ? envVars[keysVar].split(',') : [];
-            
+
             keys.splice(keyIndex, 1);
-            
+
             if (keys.length === 0) {
-                // If no keys left, delete the entire provider
-                delete envVars[keysVar];
-                const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
-                delete envVars[baseUrlVar];
+                // If no keys left, delete the entire provider using the same logic as deleteProvider
+                const providerPrefix = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_`;
+
+                // Delete all environment variables that start with the provider prefix
+                for (const key in envVars) {
+                    if (key.startsWith(providerPrefix)) {
+                        console.log(`Deleting env var: ${key}`);
+                        delete envVars[key];
+                    }
+                }
             } else {
                 envVars[keysVar] = keys.filter(k => k.trim()).join(',');
             }
-            
+
             try {
                 const response = await fetch('/admin/api/env', {
                     method: 'POST',
