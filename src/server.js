@@ -99,61 +99,10 @@ class ProxyServer {
         }
       }
 
-      // Handle root route with welcome message
+      // Handle root route - redirect to admin
       if (req.url === '/' || req.url === '') {
-        const packageInfo = require('../package.json');
-        const welcomeHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>${packageInfo.name}</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                max-width: 600px;
-                margin: 100px auto;
-                padding: 20px;
-                text-align: center;
-                background: #f5f5f5;
-              }
-              h1 {
-                color: #333;
-                margin-bottom: 20px;
-              }
-              p {
-                color: #666;
-                font-size: 18px;
-                margin: 20px 0;
-              }
-              a {
-                color: #0066cc;
-                text-decoration: none;
-                font-weight: 500;
-              }
-              a:hover {
-                text-decoration: underline;
-              }
-              .container {
-                background: white;
-                padding: 40px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1>Hello from ${packageInfo.name}!</h1>
-              <p>Version ${packageInfo.version}</p>
-              <p>To access the admin panel, please visit:</p>
-              <p><a href="/admin">http://localhost:${this.config.getPort()}/admin</a></p>
-            </div>
-          </body>
-          </html>
-        `;
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(welcomeHtml);
+        res.writeHead(302, { 'Location': '/admin' });
+        res.end();
         return;
       }
 
@@ -638,6 +587,8 @@ class ProxyServer {
     // Admin API routes
     if (path === '/admin/api/env' && req.method === 'GET') {
       await this.handleGetEnvVars(res);
+    } else if (path === '/admin/api/env-file' && req.method === 'GET') {
+      await this.handleGetEnvFile(res);
     } else if (path === '/admin/api/env' && req.method === 'POST') {
       await this.handleUpdateEnvVars(res, body);
     } else if (path === '/admin/api/test' && req.method === 'POST') {
@@ -701,17 +652,29 @@ class ProxyServer {
       const envPath = path.join(process.cwd(), '.env');
       const envContent = fs.readFileSync(envPath, 'utf8');
       const envVars = this.config.parseEnvFile(envContent);
-      
+
       // Don't send the admin password
       delete envVars.ADMIN_PASSWORD;
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(envVars));
     } catch (error) {
       this.sendError(res, 500, 'Failed to read environment variables');
     }
   }
-  
+
+  async handleGetEnvFile(res) {
+    try {
+      const envPath = path.join(process.cwd(), '.env');
+      const envContent = fs.readFileSync(envPath, 'utf8');
+
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(envContent);
+    } catch (error) {
+      this.sendError(res, 500, 'Failed to read .env file');
+    }
+  }
+
   getAdminPassword() {
     try {
       const envPath = path.join(process.cwd(), '.env');
@@ -756,9 +719,9 @@ class ProxyServer {
 
         if (key === 'PORT' || key === 'ADMIN_PASSWORD') {
           basicConfig[key] = value;
-        } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL') || key.endsWith('_ACCESS_KEY') || key.endsWith('_DEFAULT_MODEL')) {
+        } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL') || key.endsWith('_ACCESS_KEY') || key.endsWith('_DEFAULT_MODEL') || key.endsWith('_MODEL_HISTORY')) {
           // Extract provider info
-          const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL|ACCESS_KEY|DEFAULT_MODEL)$/);
+          const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL|ACCESS_KEY|DEFAULT_MODEL|MODEL_HISTORY)$/);
           if (match) {
             const apiType = match[1];
             const providerName = match[2];
@@ -772,7 +735,8 @@ class ProxyServer {
                 keys: '',
                 baseUrl: '',
                 accessKey: '',
-                defaultModel: ''
+                defaultModel: '',
+                modelHistory: ''
               };
             }
 
@@ -784,6 +748,8 @@ class ProxyServer {
               providers[providerKey].accessKey = value;
             } else if (keyType === 'DEFAULT_MODEL') {
               providers[providerKey].defaultModel = value;
+            } else if (keyType === 'MODEL_HISTORY') {
+              providers[providerKey].modelHistory = value;
             }
           } else {
             otherConfig[key] = value;
@@ -828,6 +794,9 @@ class ProxyServer {
           if (provider.defaultModel) {
             envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
           }
+          if (provider.modelHistory) {
+            envContent += `${provider.apiType}_${provider.providerName}_MODEL_HISTORY=${provider.modelHistory}\n`;
+          }
           envContent += '\n';
         }
       }
@@ -847,6 +816,9 @@ class ProxyServer {
           if (provider.defaultModel) {
             envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
           }
+          if (provider.modelHistory) {
+            envContent += `${provider.apiType}_${provider.providerName}_MODEL_HISTORY=${provider.modelHistory}\n`;
+          }
           envContent += '\n';
         }
       }
@@ -865,6 +837,9 @@ class ProxyServer {
           }
           if (provider.defaultModel) {
             envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
+          }
+          if (provider.modelHistory) {
+            envContent += `${provider.apiType}_${provider.providerName}_MODEL_HISTORY=${provider.modelHistory}\n`;
           }
           envContent += '\n';
         }

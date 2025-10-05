@@ -182,11 +182,14 @@
             color: var(--foreground);
             border-radius: var(--radius);
             font-family: inherit;
+            transition: all 0.2s;
         }
-        
+
         .input-field:focus {
             outline: none;
             border-color: var(--primary);
+            background-color: var(--background);
+            box-shadow: 0 0 0 1px var(--primary);
         }
         
         .muted {
@@ -482,10 +485,10 @@
                                         type="text"
                                         id="newProviderName"
                                         class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors"
-                                        placeholder="e.g., groq, together (leave empty for default)"
+                                        placeholder="e.g., groq, together"
                                         oninput="handleProviderNameInput(this); updateProviderPreview()"
                                     >
-                                    <p class="text-muted-foreground text-xs mt-1">Leave empty for default provider, or provide both name and base URL for custom provider</p>
+                                    <p class="text-muted-foreground text-xs mt-1">Provide both name and base URL for custom provider</p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-muted-foreground mb-2">API Type</label>
@@ -504,10 +507,10 @@
                                         type="text" 
                                         id="newProviderBaseUrl" 
                                         class="input-field w-full px-2 py-1.5 text-sm rounded transition-colors" 
-                                        placeholder="https://api.example.com/v1 (leave empty for default)"
+                                        placeholder="e.g., https://api.example.com/v1"
                                         oninput="handleBaseUrlInput(this); updateProviderPreview()"
                                     >
-                                    <p class="text-muted-foreground text-xs mt-1">Leave empty for default URL, or provide both name and base URL for custom provider</p>
+                                    <p class="text-muted-foreground text-xs mt-1">Provide both name and base URL for custom provider</p>
                                 </div>
                             </div>
                             <div>
@@ -593,13 +596,24 @@
                 </div>
             </div>
         </main>
+
+        <!-- Footer -->
+        <footer class="mt-12 py-6 border-t border-border">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-center text-sm text-muted-foreground">
+                    <a href="https://github.com/p32929/openai-gemini-api-key-rotator" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">
+                        Star & Fork on GitHub
+                    </a>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <!-- Single Notification Overlay -->
     <div id="singleNotification" class="fixed bg-card border border-border rounded-md shadow-lg z-[150] transition-all duration-300 hidden" style="top: 140px; right: 20px; min-width: 400px; max-width: 600px;">
         <div class="flex items-center space-x-3 px-4 py-3">
             <div id="singleIcon" class="flex-shrink-0"></div>
-            <span id="singleMessage" class="flex-1 text-sm"></span>
+            <span id="singleMessage" class="flex-1 text-sm text-foreground"></span>
             <span id="notificationCount" class="flex-shrink-0 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium hidden">+2</span>
             <button onclick="clearCurrentNotification()" class="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1" title="Dismiss">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1103,7 +1117,8 @@
                                 keys: [],
                                 baseUrl: '',
                                 accessKey: '',
-                                defaultModel: ''
+                                defaultModel: '',
+                                modelHistory: []
                             };
                         }
                         providers[providerKey].keys = value.split(',').map(k => k.trim()).filter(k => k);
@@ -1122,7 +1137,8 @@
                                 keys: [],
                                 baseUrl: '',
                                 accessKey: '',
-                                defaultModel: ''
+                                defaultModel: '',
+                                modelHistory: []
                             };
                         }
                         providers[providerKey].baseUrl = value;
@@ -1141,7 +1157,8 @@
                                 keys: [],
                                 baseUrl: '',
                                 accessKey: '',
-                                defaultModel: ''
+                                defaultModel: '',
+                                modelHistory: []
                             };
                         }
                         providers[providerKey].accessKey = value;
@@ -1162,13 +1179,49 @@
                             keys: [],
                             baseUrl: '',
                             accessKey: '',
-                            defaultModel: ''
+                            defaultModel: '',
+                            modelHistory: []
                         };
                     }
                     providers[providerKey].defaultModel = value;
+                } else if (key.endsWith('_MODEL_HISTORY') && value) {
+                    // Extract API_TYPE and PROVIDER from key
+                    const parts = key.replace('_MODEL_HISTORY', '').split('_');
+                    if (parts.length < 2) continue;
+
+                    const apiType = parts[0].toLowerCase();
+                    const providerName = parts.slice(1).join('_').toLowerCase();
+                    const providerKey = `${apiType}_${providerName}`;
+
+                    if (!providers[providerKey]) {
+                        providers[providerKey] = {
+                            name: providerName,
+                            apiType: apiType,
+                            keys: [],
+                            baseUrl: '',
+                            accessKey: '',
+                            defaultModel: '',
+                            modelHistory: []
+                        };
+                    }
+                    providers[providerKey].modelHistory = value.split(',').map(m => m.trim()).filter(m => m);
                 }
             }
-            
+
+            // Add current default model to each provider's history if it exists
+            Object.values(providers).forEach(provider => {
+                // If provider has a default model, ensure it's in the history
+                if (provider.defaultModel && provider.defaultModel.trim()) {
+                    const currentModel = provider.defaultModel.trim();
+
+                    // Remove if already exists (to re-add at front)
+                    const filteredHistory = provider.modelHistory.filter(m => m !== currentModel);
+
+                    // Add current model at the front
+                    provider.modelHistory = [currentModel, ...filteredHistory].slice(0, 15);
+                }
+            });
+
             // Display each provider
             Object.values(providers).forEach((provider, index) => {
                 const providerDiv = document.createElement('div');
@@ -1267,15 +1320,24 @@
                                 <div>
                                     <label class="block text-xs text-muted-foreground mb-1.5 font-medium">Original Base URL</label>
                                     <div class="relative">
-                                        <div class="font-mono text-foreground bg-background border border-border px-3 py-2 pr-10 rounded text-xs">
+                                        <div class="font-mono text-foreground bg-muted/30 border border-border px-3 py-2 pr-10 rounded text-xs">
                                             ${provider.baseUrl || 'Using Default URL'}
                                         </div>
+                                        <button
+                                            onclick="copyOriginalBaseUrl('${provider.baseUrl || ''}')"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                                            title="Copy original base URL"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-muted-foreground mb-1.5 font-medium">Your Endpoint URL</label>
                                     <div class="relative">
-                                        <div class="font-mono text-foreground bg-background border border-border px-3 py-2 pr-10 rounded text-xs">
+                                        <div class="font-mono text-foreground bg-muted/30 border border-border px-3 py-2 pr-10 rounded text-xs">
                                             <span class="text-muted-foreground">${window.location.protocol}//${window.location.host}/</span><span class="text-primary font-semibold">${provider.name}</span><span class="text-muted-foreground">/*</span>
                                         </div>
                                         <button
@@ -1345,11 +1407,23 @@
                                             id="defaultModel_${provider.apiType}_${provider.name}"
                                             value="${provider.defaultModel || ''}"
                                             data-original="${provider.defaultModel || ''}"
-                                            class="input-field w-full px-3 py-2 pr-10 text-xs rounded transition-colors"
+                                            class="input-field w-full px-3 py-2 pr-20 text-xs rounded transition-colors"
                                             placeholder="${provider.apiType === 'openai' ? 'e.g., gpt-4o-mini' : 'e.g., gemini-1.5-flash'}"
                                             oninput="checkForChanges('defaultModel', '${provider.apiType}', '${provider.name}')"
                                             onkeypress="if(event.key === 'Enter') saveDefaultModel('${provider.apiType}', '${provider.name}')"
+                                            autocomplete="off"
                                         >
+                                        <button
+                                            id="historyBtn_defaultModel_${provider.apiType}_${provider.name}"
+                                            onclick="toggleModelHistory('${provider.apiType}', '${provider.name}')"
+                                            class="absolute right-12 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
+                                            title="Model History"
+                                            ${(!provider.modelHistory || provider.modelHistory.length === 0) ? 'disabled style="opacity: 0.3; cursor: not-allowed; pointer-events: none;"' : ''}
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            </svg>
+                                        </button>
                                         <button
                                             id="saveBtn_defaultModel_${provider.apiType}_${provider.name}"
                                             ${defaultModelAction ? `onclick="${defaultModelAction}"` : ''}
@@ -1359,6 +1433,27 @@
                                         >
                                             ${defaultModelButtonHtml}
                                         </button>
+                                        <div id="modelHistory_${provider.apiType}_${provider.name}" class="hidden absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+                                            ${(provider.modelHistory && provider.modelHistory.length > 0) ? provider.modelHistory.map(model => `
+                                                <div class="flex items-center justify-between px-3 py-2 text-xs hover:bg-secondary transition-colors group">
+                                                    <button
+                                                        onclick="selectModelFromHistory('${provider.apiType}', '${provider.name}', '${model.replace(/'/g, "\\'")}')"
+                                                        class="flex-1 text-left"
+                                                    >
+                                                        ${model}
+                                                    </button>
+                                                    <button
+                                                        onclick="showDeleteModelConfirmation(event, '${provider.apiType}', '${provider.name}', '${model.replace(/'/g, "\\'")}')"
+                                                        class="ml-2 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                                                        title="Remove from history"
+                                                    >
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            `).join('') : ''}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1813,6 +1908,14 @@
             await copyToClipboard(endpointUrl, `Endpoint URL copied: ${endpointUrl}`);
         }
 
+        async function copyOriginalBaseUrl(baseUrl) {
+            if (!baseUrl || baseUrl === '') {
+                showToast('No base URL to copy', 'warning');
+                return;
+            }
+            await copyToClipboard(baseUrl, `Base URL copied: ${baseUrl}`);
+        }
+
         // Generate and copy cURL command for testing a provider
         async function copyProviderCurl(apiType, providerName) {
             const baseUrl = `${window.location.protocol}//${window.location.host}`;
@@ -1883,144 +1986,16 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
         // Export configuration as environment variables
         async function exportConfiguration() {
             try {
-                let envContent = '# API Key Rotator Configuration Export\n';
-                envContent += `# Exported on ${new Date().toISOString()}\n\n`;
-
-                // Add basic configuration
-                envContent += '# Basic Configuration\n';
-                envContent += `PORT=${envVars.PORT || '8990'}\n`;
-                if (envVars.ADMIN_PASSWORD) {
-                    envContent += `ADMIN_PASSWORD=${envVars.ADMIN_PASSWORD}\n`;
-                }
-                envContent += '\n';
-
-                // Group providers for better organization
-                const providers = {};
-
-                // Parse existing environment variables
-                for (const [key, value] of Object.entries(envVars)) {
-                    if (key.endsWith('_API_KEYS') && value) {
-                        const match = key.match(/^(.+)_(.+)_API_KEYS$/);
-                        if (match && match.length >= 3) {
-                            const apiType = match[1];
-                            const providerName = match[2];
-                            const providerKey = `${apiType}_${providerName}`;
-
-                            if (!providers[providerKey]) {
-                                providers[providerKey] = {
-                                    name: providerName,
-                                    apiType: apiType,
-                                    keys: value,
-                                    baseUrl: '',
-                                    accessKey: '',
-                                    defaultModel: ''
-                                };
-                            }
-                        } else {
-                            // Handle legacy format (OPENAI_API_KEYS, GEMINI_API_KEYS)
-                            const legacyMatch = key.match(/^(OPENAI|GEMINI)_API_KEYS$/);
-                            if (legacyMatch) {
-                                const apiType = legacyMatch[1];
-                                const providerKey = `${apiType}_LEGACY`;
-                                providers[providerKey] = {
-                                    name: apiType.toLowerCase(),
-                                    apiType: apiType,
-                                    keys: value,
-                                    baseUrl: '',
-                                    accessKey: '',
-                                    defaultModel: '',
-                                    legacy: true
-                                };
-                            }
-                        }
-                    } else if (key.endsWith('_BASE_URL') && value) {
-                        const match = key.match(/^(.+)_(.+)_BASE_URL$/);
-                        if (match && match.length >= 3) {
-                            const apiType = match[1];
-                            const providerName = match[2];
-                            const providerKey = `${apiType}_${providerName}`;
-
-                            if (!providers[providerKey]) {
-                                providers[providerKey] = {
-                                    name: providerName,
-                                    apiType: apiType,
-                                    keys: '',
-                                    baseUrl: value,
-                                    accessKey: '',
-                                    defaultModel: ''
-                                };
-                            } else {
-                                providers[providerKey].baseUrl = value;
-                            }
-                        } else {
-                            // Handle legacy format
-                            const legacyMatch = key.match(/^(OPENAI|GEMINI)_BASE_URL$/);
-                            if (legacyMatch) {
-                                const apiType = legacyMatch[1];
-                                const providerKey = `${apiType}_LEGACY`;
-                                if (providers[providerKey]) {
-                                    providers[providerKey].baseUrl = value;
-                                }
-                            }
-                        }
-                    } else if (key.endsWith('_ACCESS_KEY') && value) {
-                        const match = key.match(/^(.+)_(.+)_ACCESS_KEY$/);
-                        if (match && match.length >= 3) {
-                            const apiType = match[1];
-                            const providerName = match[2];
-                            const providerKey = `${apiType}_${providerName}`;
-                            if (providers[providerKey]) {
-                                providers[providerKey].accessKey = value;
-                            }
-                        }
-                    } else if (key.endsWith('_DEFAULT_MODEL') && value) {
-                        const match = key.match(/^(.+)_(.+)_DEFAULT_MODEL$/);
-                        if (match && match.length >= 3) {
-                            const apiType = match[1];
-                            const providerName = match[2];
-                            const providerKey = `${apiType}_${providerName}`;
-                            if (providers[providerKey]) {
-                                providers[providerKey].defaultModel = value;
-                            }
-                        }
-                    }
+                // Fetch the .env file content from the server
+                const response = await fetch('/admin/api/env-file');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch .env file');
                 }
 
-                // Add legacy providers section if any exist
-                const legacyProviders = Object.entries(providers).filter(([_, p]) => p.legacy);
-                if (legacyProviders.length > 0) {
-                    envContent += '# Legacy Providers (standard endpoints)\n';
-                    for (const [_, provider] of legacyProviders) {
-                        if (provider.keys) {
-                            envContent += `${provider.apiType}_API_KEYS=${provider.keys}\n`;
-                        }
-                        if (provider.baseUrl) {
-                            envContent += `${provider.apiType}_BASE_URL=${provider.baseUrl}\n`;
-                        }
-                    }
-                    envContent += '\n';
-                }
+                let envContent = await response.text();
 
-                // Add named providers section
-                const namedProviders = Object.entries(providers).filter(([_, p]) => !p.legacy);
-                if (namedProviders.length > 0) {
-                    envContent += '# Named Providers (custom endpoints)\n';
-                    for (const [_, provider] of namedProviders) {
-                        if (provider.keys) {
-                            envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_API_KEYS=${provider.keys}\n`;
-                        }
-                        if (provider.baseUrl) {
-                            envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_BASE_URL=${provider.baseUrl}\n`;
-                        }
-                        if (provider.accessKey) {
-                            envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_ACCESS_KEY=${provider.accessKey}\n`;
-                        }
-                        if (provider.defaultModel) {
-                            envContent += `${provider.apiType.toUpperCase()}_${provider.name.toUpperCase()}_DEFAULT_MODEL=${provider.defaultModel}\n`;
-                        }
-                        envContent += '\n';
-                    }
-                }
+                // Replace ADMIN_PASSWORD value with empty string
+                envContent = envContent.replace(/^ADMIN_PASSWORD=.*$/m, 'ADMIN_PASSWORD=');
 
                 // Copy to clipboard
                 await copyToClipboard(envContent, '.env configuration copied to clipboard! Ready to paste.');
@@ -2179,11 +2154,40 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             }
 
             const defaultModel = input.value.trim();
+            const oldModel = input.getAttribute('data-original'); // Capture before any changes
             const modelVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_DEFAULT_MODEL`;
+            const historyVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_MODEL_HISTORY`;
+
+            // Get current history
+            const currentHistory = envVars[historyVar] ? envVars[historyVar].split(',').map(m => m.trim()).filter(m => m) : [];
 
             if (defaultModel) {
                 envVars[modelVar] = defaultModel;
+
+                // Add to model history if not already there
+                if (!currentHistory.includes(defaultModel)) {
+                    currentHistory.push(defaultModel);
+                }
+
+                // Sort alphabetically and keep max 15
+                const newHistory = currentHistory.sort((a, b) => a.localeCompare(b)).slice(0, 15);
+                envVars[historyVar] = newHistory.join(',');
             } else {
+                // When default model is removed, add the old model to history
+                if (oldModel && oldModel.trim() && !currentHistory.includes(oldModel.trim())) {
+                    currentHistory.push(oldModel.trim());
+                }
+
+                // Sort alphabetically and keep max 15
+                const newHistory = currentHistory.sort((a, b) => a.localeCompare(b)).slice(0, 15);
+
+                // Only set history if there are models
+                if (newHistory.length > 0) {
+                    envVars[historyVar] = newHistory.join(',');
+                } else {
+                    delete envVars[historyVar];
+                }
+
                 delete envVars[modelVar];
             }
 
@@ -2299,10 +2303,29 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
 
             if (!input) return;
 
+            const oldModel = input.getAttribute('data-original'); // Capture before clearing
+            const modelVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_DEFAULT_MODEL`;
+            const historyVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_MODEL_HISTORY`;
+
             // Clear the input
             input.value = '';
 
-            const modelVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_DEFAULT_MODEL`;
+            // Get current history
+            const currentHistory = envVars[historyVar] ? envVars[historyVar].split(',').map(m => m.trim()).filter(m => m) : [];
+
+            // Add the old model to history if it's not empty and not already there
+            if (oldModel && oldModel.trim() && !currentHistory.includes(oldModel.trim())) {
+                currentHistory.push(oldModel.trim());
+            }
+
+            // Sort alphabetically and keep max 15
+            const newHistory = currentHistory.sort((a, b) => a.localeCompare(b)).slice(0, 15);
+
+            // Update history if there are models
+            if (newHistory.length > 0) {
+                envVars[historyVar] = newHistory.join(',');
+            }
+
             delete envVars[modelVar];
 
             try {
@@ -2326,6 +2349,105 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 showErrorToast(`Failed to delete default model: ${error.message}`);
             }
         }
+
+        function toggleModelHistory(apiType, providerName) {
+            const historyId = `modelHistory_${apiType}_${providerName}`;
+            const historyDiv = document.getElementById(historyId);
+
+            if (!historyDiv) return;
+
+            // Close all other open dropdowns
+            document.querySelectorAll('[id^="modelHistory_"]').forEach(div => {
+                if (div.id !== historyId) {
+                    div.classList.add('hidden');
+                }
+            });
+
+            // Toggle current dropdown
+            historyDiv.classList.toggle('hidden');
+        }
+
+        function showDeleteModelConfirmation(event, apiType, providerName, model) {
+            // Prevent the click from bubbling up to selectModelFromHistory
+            event.stopPropagation();
+
+            const dialog = document.getElementById('confirmDialog');
+            const message = document.getElementById('confirmMessage');
+
+            message.textContent = `Remove "${model}" from history?`;
+
+            // Set up the confirm button to call the actual delete function
+            const confirmBtn = dialog.querySelector('button[onclick="confirmDelete()"]');
+            confirmBtn.onclick = () => {
+                dialog.classList.add('hidden');
+                deleteModelFromHistory(apiType, providerName, model);
+            };
+
+            dialog.classList.remove('hidden');
+        }
+
+        async function deleteModelFromHistory(apiType, providerName, model) {
+            const historyVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_MODEL_HISTORY`;
+
+            // Get current history
+            const currentHistory = envVars[historyVar] ? envVars[historyVar].split(',').map(m => m.trim()).filter(m => m) : [];
+
+            // Remove the model
+            const newHistory = currentHistory.filter(m => m !== model);
+
+            // Update or delete history
+            if (newHistory.length > 0) {
+                envVars[historyVar] = newHistory.join(',');
+            } else {
+                delete envVars[historyVar];
+            }
+
+            try {
+                const response = await fetch('/admin/api/env', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(envVars)
+                });
+
+                if (response.ok) {
+                    renderEnvVars();
+                    showSuccessToast(`Removed "${model}" from history`);
+                } else {
+                    showErrorToast('Failed to remove model from history');
+                }
+            } catch (error) {
+                showErrorToast(`Failed to remove model from history: ${error.message}`);
+            }
+        }
+
+        function selectModelFromHistory(apiType, providerName, model) {
+            const inputId = `defaultModel_${apiType}_${providerName}`;
+            const input = document.getElementById(inputId);
+            const historyId = `modelHistory_${apiType}_${providerName}`;
+            const historyDiv = document.getElementById(historyId);
+
+            if (input) {
+                input.value = model;
+                checkForChanges('defaultModel', apiType, providerName);
+            }
+
+            if (historyDiv) {
+                historyDiv.classList.add('hidden');
+            }
+
+            // Auto-save the selected model
+            saveDefaultModel(apiType, providerName);
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('[id^="historyBtn_defaultModel_"]') &&
+                !event.target.closest('[id^="modelHistory_"]')) {
+                document.querySelectorAll('[id^="modelHistory_"]').forEach(div => {
+                    div.classList.add('hidden');
+                });
+            }
+        });
 
         async function testProviderKey(apiType, providerName, apiKey, keyIndex) {
             // Get provider's base URL
