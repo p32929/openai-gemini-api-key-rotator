@@ -14,7 +14,11 @@ class ProxyServer {
     this.adminSessionToken = null;
     this.logBuffer = []; // Store logs in RAM only (last 100 entries)
     this.responseStorage = new Map(); // Store response data for viewing
-    
+
+    // Rate limiting for login
+    this.failedLoginAttempts = 0;
+    this.loginBlockedUntil = null;
+
     // Store required classes for reinitialization
     this.KeyRotator = require('./keyRotator');
     this.GeminiClient = require('./geminiClient');
@@ -560,6 +564,20 @@ class ProxyServer {
       return;
     }
     
+    // Check login rate limit status
+    if (path === '/admin/api/login-status' && req.method === 'GET') {
+      const now = Date.now();
+      const isBlocked = this.loginBlockedUntil && now < this.loginBlockedUntil;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        blocked: isBlocked,
+        blockedUntil: this.loginBlockedUntil,
+        remainingSeconds: isBlocked ? Math.ceil((this.loginBlockedUntil - now) / 1000) : 0,
+        failedAttempts: this.failedLoginAttempts
+      }));
+      return;
+    }
+
     // Handle login
     if (path === '/admin/login' && req.method === 'POST') {
       await this.handleAdminLogin(req, res, body);
@@ -626,21 +644,58 @@ class ProxyServer {
 
   async handleAdminLogin(req, res, body) {
     try {
+      // Check if login is currently blocked
+      if (this.loginBlockedUntil && Date.now() < this.loginBlockedUntil) {
+        const remainingSeconds = Math.ceil((this.loginBlockedUntil - Date.now()) / 1000);
+        const remainingMinutes = Math.ceil(remainingSeconds / 60);
+        res.writeHead(429, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: `Too many failed login attempts. Please wait ${remainingMinutes} minute(s).`,
+          blockedUntil: this.loginBlockedUntil,
+          remainingSeconds: remainingSeconds
+        }));
+        return;
+      }
+
       const data = JSON.parse(body);
       const adminPassword = this.getAdminPassword();
+
       if (data.password === adminPassword) {
+        // Successful login - reset counters
+        this.failedLoginAttempts = 0;
+        this.loginBlockedUntil = null;
         this.adminSessionToken = this.generateSessionToken();
-        
+
         // Set session cookie (expires in 24 hours)
         const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toUTCString();
-        res.writeHead(200, { 
+        res.writeHead(200, {
           'Content-Type': 'application/json',
           'Set-Cookie': `adminSession=${this.adminSessionToken}; HttpOnly; Expires=${expires}; Path=/admin`
         });
         res.end(JSON.stringify({ success: true }));
       } else {
-        res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid password' }));
+        // Failed login - increment counter
+        this.failedLoginAttempts++;
+        const attemptsRemaining = 5 - this.failedLoginAttempts;
+
+        // Block if reached 5 attempts
+        if (this.failedLoginAttempts >= 5) {
+          this.loginBlockedUntil = Date.now() + (5 * 60 * 1000); // 5 minutes
+          console.log('[SECURITY] Login blocked due to 5 failed attempts. Blocked until:', new Date(this.loginBlockedUntil).toISOString());
+          res.writeHead(429, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'Too many failed login attempts. Please wait 5 minutes.',
+            blockedUntil: this.loginBlockedUntil,
+            remainingSeconds: 300
+          }));
+        } else {
+          console.log(`[SECURITY] Failed login attempt ${this.failedLoginAttempts}/5`);
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: `Invalid password. ${attemptsRemaining} attempt(s) remaining.`,
+            attemptsRemaining: attemptsRemaining
+          }));
+        }
       }
     } catch (error) {
       this.sendError(res, 400, 'Invalid request');

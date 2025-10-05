@@ -343,24 +343,38 @@
             
             <div class="login-container p-6">
                 <div class="space-y-4">
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-foreground mb-2">Password</label>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            class="input-field w-full px-3 py-2 rounded-md transition-colors" 
-                            placeholder="Enter admin password"
+                    <div id="loginInputs">
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-foreground mb-2">Password</label>
+                            <input
+                                type="password"
+                                id="password"
+                                class="input-field w-full px-3 py-2 rounded-md transition-colors"
+                                placeholder="Enter admin password"
+                            >
+                        </div>
+                        <button
+                            onclick="login()"
+                            id="loginButton"
+                            class="btn btn-primary w-full py-3 px-4 font-medium mt-4"
                         >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                            Sign In
+                        </button>
                     </div>
-                    <button 
-                        onclick="login()" 
-                        class="btn btn-primary w-full py-3 px-4 font-medium"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                        </svg>
-                        Sign In
-                    </button>
+                    <div id="rateLimitMessage" class="hidden">
+                        <div class="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-6 rounded-md text-center">
+                            <svg class="w-12 h-12 mx-auto mb-4 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <h3 class="text-lg font-semibold mb-2">Too Many Failed Attempts</h3>
+                            <p class="text-sm mb-4">Login has been temporarily blocked for security.</p>
+                            <div class="text-2xl font-bold mb-2" id="countdownTimer">5:00</div>
+                            <p class="text-xs text-muted-foreground">Time remaining until you can try again</p>
+                        </div>
+                    </div>
                     <div id="loginError" class="hidden bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm"></div>
                 </div>
             </div>
@@ -1031,28 +1045,81 @@
         async function login() {
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('loginError');
-            
+
             try {
                 const response = await fetch('/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password })
                 });
-                
+
+                const data = await response.json();
+
                 if (response.ok) {
                     document.getElementById('loginForm').classList.add('hidden');
                     document.getElementById('adminPanel').classList.remove('hidden');
                     loadEnvVars();
                     // Fix header positioning after panel is shown
                     setTimeout(adjustStickyHeaderPositioning, 100);
+                } else if (response.status === 429) {
+                    // Rate limited - show countdown timer UI
+                    const passwordInput = document.getElementById('password');
+                    const loginButton = document.getElementById('loginButton');
+                    passwordInput.disabled = true;
+                    loginButton.disabled = true;
+
+                    // Start countdown timer (this will hide inputs and show timer)
+                    if (data.remainingSeconds) {
+                        startLoginCountdown(data.remainingSeconds, passwordInput, loginButton, errorDiv);
+                    }
                 } else {
-                    errorDiv.textContent = 'Invalid password';
+                    // Show error with attempts remaining if available
+                    errorDiv.textContent = data.error || 'Invalid password';
+                    if (data.attemptsRemaining !== undefined) {
+                        errorDiv.textContent += ` (${data.attemptsRemaining} attempt(s) remaining)`;
+                    }
                     errorDiv.classList.remove('hidden');
                 }
             } catch (error) {
                 errorDiv.textContent = 'Login failed: ' + error.message;
                 errorDiv.classList.remove('hidden');
             }
+        }
+
+        function startLoginCountdown(seconds, passwordInput, loginButton, errorDiv) {
+            let remaining = seconds;
+            const countdownTimer = document.getElementById('countdownTimer');
+            const loginInputs = document.getElementById('loginInputs');
+            const rateLimitMessage = document.getElementById('rateLimitMessage');
+
+            // Hide login inputs and show rate limit message
+            if (loginInputs) loginInputs.classList.add('hidden');
+            if (rateLimitMessage) rateLimitMessage.classList.remove('hidden');
+            if (errorDiv) errorDiv.classList.add('hidden');
+
+            const updateCountdown = () => {
+                if (remaining <= 0) {
+                    // Re-enable login
+                    if (passwordInput) passwordInput.disabled = false;
+                    if (loginButton) loginButton.disabled = false;
+                    if (loginInputs) loginInputs.classList.remove('hidden');
+                    if (rateLimitMessage) rateLimitMessage.classList.add('hidden');
+                    if (errorDiv) errorDiv.classList.add('hidden');
+                    return;
+                }
+
+                // Update timer display (MM:SS format)
+                const minutes = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                if (countdownTimer) {
+                    countdownTimer.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+                }
+
+                remaining--;
+                setTimeout(updateCountdown, 1000);
+            };
+
+            updateCountdown();
         }
         
         async function logout() {
@@ -3244,10 +3311,13 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
         
         // Check authentication on page load
         async function checkAuth() {
+            // Always check rate limit status first
+            await checkLoginRateLimit();
+
             try {
                 const response = await fetch('/admin/api/auth');
                 const data = await response.json();
-                
+
                 if (data.authenticated) {
                     document.getElementById('loginForm').classList.add('hidden');
                     document.getElementById('adminPanel').classList.remove('hidden');
@@ -3257,6 +3327,27 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 }
             } catch (error) {
                 console.log('Auth check failed, showing login form');
+            }
+        }
+
+        async function checkLoginRateLimit() {
+            try {
+                const response = await fetch('/admin/api/login-status');
+                const data = await response.json();
+
+                if (data.blocked) {
+                    const passwordInput = document.getElementById('password');
+                    const loginButton = document.getElementById('loginButton');
+                    const errorDiv = document.getElementById('loginError');
+
+                    if (passwordInput) passwordInput.disabled = true;
+                    if (loginButton) loginButton.disabled = true;
+
+                    // Start countdown from remaining seconds
+                    startLoginCountdown(data.remainingSeconds, passwordInput, loginButton, errorDiv);
+                }
+            } catch (error) {
+                console.log('Failed to check login rate limit status:', error);
             }
         }
         
