@@ -18,14 +18,24 @@ Node.js proxy server for automatic API key rotation across multiple LLM provider
 ## Quick Start
 
 ```bash
-git clone https://github.com/p32929/openai-gemini-api-key-rotator.git
-cd openai-gemini-api-key-rotator
+git https://github.com/rpfilomeno/openai-gemini-api-key-rotator
+cd openai-gemini-api-key-rotator/app
 cp .env.example .env
 # Edit .env: Set PORT and ADMIN_PASSWORD
-npm start
+cd ..
+docker-compose up -d
 ```
+## Docker Run
 
-Access admin panel: `http://localhost:8990/admin`
+```bash
+docker run -d \
+  --name openai-gemini-api-key-rotator \
+  -p 8990:8990 \
+  -e TERM=xterm-256color \
+  -e TZ=Asia/Manila \
+  --restart unless-stopped \
+  rpfilomeno/openai-gemini-api-key-rotator
+```
 
 ## Configuration
 
@@ -33,6 +43,9 @@ Access admin panel: `http://localhost:8990/admin`
 PORT=8990
 ADMIN_PASSWORD=your-secure-password
 ```
+
+
+## Web Interface
 
 Visit http://localhost:8990/admin to configure your providers and start using the API.
 
