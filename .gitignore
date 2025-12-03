@@ -1,5 +1,5 @@
-.env
-/node_modules
+app/.env
+app/node_modules
 /.claude
 *.log
 /.serena
