@@ -1284,8 +1284,8 @@
                     // Remove if already exists (to re-add at front)
                     const filteredHistory = provider.modelHistory.filter(m => m !== currentModel);
 
-                    // Add current model at the front
-                    provider.modelHistory = [currentModel, ...filteredHistory].slice(0, 15);
+                    // Add current model at the front (no limit - keep all models)
+                    provider.modelHistory = [currentModel, ...filteredHistory];
                 }
             });
 
@@ -2231,13 +2231,18 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             if (defaultModel) {
                 envVars[modelVar] = defaultModel;
 
-                // Add to model history if not already there
+                // First, preserve the old model in history if it exists and is different from new model
+                if (oldModel && oldModel.trim() && oldModel.trim() !== defaultModel && !currentHistory.includes(oldModel.trim())) {
+                    currentHistory.push(oldModel.trim());
+                }
+
+                // Add new model to history if not already there
                 if (!currentHistory.includes(defaultModel)) {
                     currentHistory.push(defaultModel);
                 }
 
-                // Sort alphabetically and keep max 15
-                const newHistory = currentHistory.sort((a, b) => a.localeCompare(b)).slice(0, 15);
+                // Sort alphabetically (no limit - keep all models ever saved)
+                const newHistory = currentHistory.sort((a, b) => a.localeCompare(b));
                 envVars[historyVar] = newHistory.join(',');
             } else {
                 // When default model is removed, add the old model to history
@@ -2245,8 +2250,8 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                     currentHistory.push(oldModel.trim());
                 }
 
-                // Sort alphabetically and keep max 15
-                const newHistory = currentHistory.sort((a, b) => a.localeCompare(b)).slice(0, 15);
+                // Sort alphabetically (no limit - keep all models ever saved)
+                const newHistory = currentHistory.sort((a, b) => a.localeCompare(b));
 
                 // Only set history if there are models
                 if (newHistory.length > 0) {
@@ -2385,8 +2390,8 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 currentHistory.push(oldModel.trim());
             }
 
-            // Sort alphabetically and keep max 15
-            const newHistory = currentHistory.sort((a, b) => a.localeCompare(b)).slice(0, 15);
+            // Sort alphabetically (no limit - keep all models ever saved)
+            const newHistory = currentHistory.sort((a, b) => a.localeCompare(b));
 
             // Update history if there are models
             if (newHistory.length > 0) {
