@@ -60,11 +60,24 @@ class ProxyServer {
     const requestId = Math.random().toString(36).substring(2, 11);
     const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const startTime = Date.now();
-    
+
+    // Set CORS headers for all responses - accept all origins
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
+
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
     // Only log to file for API calls, always log to console
     const isApiCall = this.parseRoute(req.url) !== null;
     console.log(`[REQ-${requestId}] ${req.method} ${req.url} from ${clientIp}`);
-    
+
     try {
       const body = await this.readRequestBody(req);
 
