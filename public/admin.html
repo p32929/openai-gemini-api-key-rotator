@@ -1886,6 +1886,13 @@
                 return;
             }
 
+            // Check for duplicate keys within the new provider
+            const uniqueKeys = new Set(apiKeys);
+            if (uniqueKeys.size !== apiKeys.length) {
+                showWarningToast('Duplicate keys found. Please remove duplicate entries.');
+                return;
+            }
+
             // Validate that if either name or base URL is provided, both must be provided
             const hasName = name.length > 0;
             const hasBaseUrl = baseUrl.length > 0;
@@ -1921,6 +1928,18 @@
             if (!/^[a-zA-Z0-9_]+$/.test(name)) {
                 showErrorToast('Provider name can only contain letters, numbers, and underscores');
                 return;
+            }
+
+            // Check for duplicates against existing keys in this provider
+            const existingKeysVar = `${apiType.toUpperCase()}_${name.toUpperCase()}_API_KEYS`;
+            if (envVars[existingKeysVar]) {
+                const existing = envVars[existingKeysVar].split(',').map(k => k.trim().replace(/^~/, ''));
+                const dupes = apiKeys.filter(k => existing.includes(k));
+                if (dupes.length > 0) {
+                    const maskedDupes = dupes.map(k => k.length > 16 ? k.substring(0, 8) + '...' + k.slice(-4) : k);
+                    showWarningToast(`Key(s) already exist in this provider: ${maskedDupes.join(', ')}`);
+                    return;
+                }
             }
 
             // Test all API keys before saving
@@ -3014,8 +3033,16 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 return;
             }
 
+            // Check for duplicate key in this provider
+            const keysVarCheck = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
+            const existingKeysRaw = envVars[keysVarCheck] ? envVars[keysVarCheck].split(',').map(k => k.trim().replace(/^~/, '')) : [];
+            if (existingKeysRaw.includes(newKey)) {
+                showWarningToast('This key already exists in this provider');
+                return;
+            }
+
             const maskedKey = newKey.length > 16 ? newKey.substring(0, 8) + '...' + newKey.slice(-4) : newKey;
-            
+
             // Get the base URL for this provider to use for testing
             const baseUrlVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_BASE_URL`;
             const baseUrl = envVars[baseUrlVar] || '';
