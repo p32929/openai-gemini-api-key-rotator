@@ -114,9 +114,9 @@ curl -X POST "http://localhost:8990/gemini/models/gemini-2.5-flash:generateConte
 
 <img width="3024" height="1714" alt="Image" src="https://github.com/user-attachments/assets/f265cc8f-941e-43e4-998e-c713dacfd248" />
 
-<img width="3024" height="3652" alt="Image" src="https://github.com/user-attachments/assets/21bd17c3-763c-482a-97c0-115d8b395d65" />
+<img width="3600" height="6418" alt="Image" src="https://github.com/user-attachments/assets/fc8f464b-bd06-4bfd-be9a-10844e25f3ed" />
 
-<img width="3024" height="1714" alt="Image" src="https://github.com/user-attachments/assets/0de6654d-eea8-49ad-9c19-7f2a799b604e" />
+<img width="3600" height="2110" alt="Image" src="https://github.com/user-attachments/assets/39833f4f-c4eb-4c77-9a3a-91aeab7ef92c" />
 
 ## Contributing
 

@@ -239,9 +239,44 @@ class ProxyServer {
         streamHeaders['access-control-allow-origin'] = '*';
 
         res.writeHead(response.statusCode, streamHeaders);
+
+        // Collect streamed chunks while piping to client (cap at 512KB to avoid memory issues)
+        const MAX_CAPTURE = 512 * 1024;
+        const streamChunks = [];
+        let capturedSize = 0;
+        let truncated = false;
+
+        response.stream.on('data', (chunk) => {
+          if (!truncated) {
+            capturedSize += chunk.length;
+            if (capturedSize <= MAX_CAPTURE) {
+              streamChunks.push(chunk);
+            } else {
+              truncated = true;
+            }
+          }
+        });
+
         response.stream.pipe(res);
 
         response.stream.on('end', () => {
+          let streamedData = Buffer.concat(streamChunks).toString('utf8');
+          if (truncated) {
+            streamedData += `\n\n[... truncated at 512KB — total streamed: ${(capturedSize / 1024).toFixed(1)}KB]`;
+          }
+          this.storeResponseData(requestId, {
+            method: req.method,
+            endpoint: path,
+            apiType: apiType.toUpperCase(),
+            status: response.statusCode,
+            statusText: this.getStatusText(response.statusCode),
+            contentType: response.headers['content-type'] || 'text/event-stream',
+            responseData: streamedData,
+            requestBody: body,
+            streaming: true,
+            keyInfo: keyInfo
+          });
+
           if (isApiCall) {
             const responseTime = Date.now() - startTime;
             const error = response.statusCode >= 400 ? `HTTP ${response.statusCode}` : null;
