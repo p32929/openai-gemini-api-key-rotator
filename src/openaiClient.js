@@ -7,14 +7,14 @@ class OpenAIClient {
     this.baseUrl = baseUrl;
   }
 
-  async makeRequest(method, path, body, headers = {}, customStatusCodes = null) {
+  async makeRequest(method, path, body, headers = {}, customStatusCodes = null, streaming = false) {
     // Create a new request context for this specific request
     const requestContext = this.keyRotator.createRequestContext();
     let lastError = null;
     let lastResponse = null;
+    const failedKeys = []; // Track which keys failed and why
 
     // Determine which status codes should trigger rotation
-    // Default is just 429, but can be overridden
     const rotationStatusCodes = customStatusCodes || new Set([429]);
 
     // Try each available key for this request
@@ -22,41 +22,59 @@ class OpenAIClient {
     while ((apiKey = requestContext.getNextKey()) !== null) {
       const maskedKey = this.maskApiKey(apiKey);
 
-      console.log(`[OPENAI::${maskedKey}] Attempting ${method} ${path}`);
+      console.log(`[OPENAI::${maskedKey}] Attempting ${method} ${path}${streaming ? ' (streaming)' : ''}`);
 
       try {
-        const response = await this.sendRequest(method, path, body, headers, apiKey);
+        if (streaming) {
+          const response = await this.sendStreamingRequest(method, path, body, headers, apiKey);
 
-        // Check if this status code should trigger rotation
-        if (rotationStatusCodes.has(response.statusCode)) {
-          console.log(`[OPENAI::${maskedKey}] Status ${response.statusCode} triggers rotation - trying next key`);
-          requestContext.markKeyAsRateLimited(apiKey);
-          lastResponse = response; // Keep the response in case all keys fail
-          continue;
+          if (rotationStatusCodes.has(response.statusCode)) {
+            console.log(`[OPENAI::${maskedKey}] Status ${response.statusCode} triggers rotation - trying next key`);
+            response.stream.resume();
+            requestContext.markKeyAsRateLimited(apiKey);
+            failedKeys.push({ key: maskedKey, status: response.statusCode, reason: 'rate_limited' });
+            lastResponse = { statusCode: response.statusCode, headers: response.headers, data: '' };
+            continue;
+          }
+
+          console.log(`[OPENAI::${maskedKey}] Success (${response.statusCode}) - streaming`);
+          this.keyRotator.incrementKeyUsage(apiKey);
+          response._keyInfo = { keyUsed: maskedKey, failedKeys };
+          return response;
+        } else {
+          const response = await this.sendRequest(method, path, body, headers, apiKey);
+
+          if (rotationStatusCodes.has(response.statusCode)) {
+            console.log(`[OPENAI::${maskedKey}] Status ${response.statusCode} triggers rotation - trying next key`);
+            requestContext.markKeyAsRateLimited(apiKey);
+            failedKeys.push({ key: maskedKey, status: response.statusCode, reason: 'rate_limited' });
+            lastResponse = response;
+            continue;
+          }
+
+          console.log(`[OPENAI::${maskedKey}] Success (${response.statusCode})`);
+          this.keyRotator.incrementKeyUsage(apiKey);
+          response._keyInfo = { keyUsed: maskedKey, failedKeys };
+          return response;
         }
-
-        console.log(`[OPENAI::${maskedKey}] Success (${response.statusCode})`);
-        return response;
       } catch (error) {
         console.log(`[OPENAI::${maskedKey}] Request failed: ${error.message}`);
+        failedKeys.push({ key: maskedKey, status: null, reason: error.message });
         lastError = error;
-        // For network errors, we still try the next key
         continue;
       }
     }
-    
+
     // All keys have been tried for this request
     const stats = requestContext.getStats();
     console.log(`[OPENAI] All ${stats.totalKeys} keys tried for this request. ${stats.rateLimitedKeys} were rate limited.`);
-    
-    // Update the KeyRotator with the last failed key from this request
+
     const lastFailedKey = requestContext.getLastFailedKey();
     this.keyRotator.updateLastFailedKey(lastFailedKey);
-    
-    // If all tried keys were rate limited, return 429
+
     if (requestContext.allTriedKeysRateLimited()) {
       console.log('[OPENAI] All keys rate limited for this request - returning 429');
-      return lastResponse || {
+      const response = lastResponse || {
         statusCode: 429,
         headers: { 'content-type': 'application/json' },
         data: JSON.stringify({
@@ -67,62 +85,65 @@ class OpenAIClient {
           }
         })
       };
+      response._keyInfo = { keyUsed: null, failedKeys };
+      return response;
     }
-    
-    // If we had other types of errors, throw the last one
+
     if (lastError) {
       throw lastError;
     }
-    
-    // Fallback error
+
     throw new Error('All API keys exhausted without clear error');
+  }
+
+  _buildRequestOptions(method, path, body, headers, apiKey) {
+    let fullUrl;
+    if (!path || path === '/') {
+      fullUrl = this.baseUrl;
+    } else if (path.startsWith('/')) {
+      fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path.substring(1) : this.baseUrl + path;
+    } else {
+      fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path : this.baseUrl + '/' + path;
+    }
+
+    const url = new URL(fullUrl);
+
+    const finalHeaders = {
+      'Content-Type': 'application/json',
+      ...headers
+    };
+
+    if (!headers || !headers.authorization) {
+      finalHeaders['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const options = {
+      hostname: url.hostname,
+      port: url.port || 443,
+      path: url.pathname + url.search,
+      method: method,
+      headers: finalHeaders
+    };
+
+    if (body && method !== 'GET') {
+      const bodyData = typeof body === 'string' ? body : JSON.stringify(body);
+      options.headers['Content-Length'] = Buffer.byteLength(bodyData);
+    }
+
+    return options;
   }
 
   sendRequest(method, path, body, headers, apiKey) {
     return new Promise((resolve, reject) => {
-      // Construct full URL - handle cases where path might be empty or just "/"
-      let fullUrl;
-      if (!path || path === '/') {
-        fullUrl = this.baseUrl;
-      } else if (path.startsWith('/')) {
-        fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path.substring(1) : this.baseUrl + path;
-      } else {
-        fullUrl = this.baseUrl.endsWith('/') ? this.baseUrl + path : this.baseUrl + '/' + path;
-      }
-      
-      const url = new URL(fullUrl);
-      
-      // Build headers, ensuring Authorization header is properly set
-      const finalHeaders = {
-        'Content-Type': 'application/json',
-        ...headers
-      };
-
-      // Only set Authorization if not already provided in headers
-      if (!headers || !headers.authorization) {
-        finalHeaders['Authorization'] = `Bearer ${apiKey}`;
-      }
-
-      const options = {
-        hostname: url.hostname,
-        port: url.port || 443,
-        path: url.pathname + url.search,
-        method: method,
-        headers: finalHeaders
-      };
-
-      if (body && method !== 'GET') {
-        const bodyData = typeof body === 'string' ? body : JSON.stringify(body);
-        options.headers['Content-Length'] = Buffer.byteLength(bodyData);
-      }
+      const options = this._buildRequestOptions(method, path, body, headers, apiKey);
 
       const req = https.request(options, (res) => {
         let data = '';
-        
+
         res.on('data', (chunk) => {
           data += chunk;
         });
-        
+
         res.on('end', () => {
           resolve({
             statusCode: res.statusCode,
@@ -135,6 +156,34 @@ class OpenAIClient {
       req.on('error', (error) => {
         const maskedKey = this.maskApiKey(apiKey);
         console.log(`[OPENAI::${maskedKey}] HTTP request error: ${error.message}`);
+        reject(error);
+      });
+
+      if (body && method !== 'GET') {
+        const bodyData = typeof body === 'string' ? body : JSON.stringify(body);
+        req.write(bodyData);
+      }
+
+      req.end();
+    });
+  }
+
+  sendStreamingRequest(method, path, body, headers, apiKey) {
+    return new Promise((resolve, reject) => {
+      const options = this._buildRequestOptions(method, path, body, headers, apiKey);
+
+      const req = https.request(options, (res) => {
+        // Resolve immediately with the raw stream - don't buffer
+        resolve({
+          statusCode: res.statusCode,
+          headers: res.headers,
+          stream: res
+        });
+      });
+
+      req.on('error', (error) => {
+        const maskedKey = this.maskApiKey(apiKey);
+        console.log(`[OPENAI::${maskedKey}] HTTP streaming request error: ${error.message}`);
         reject(error);
       });
 

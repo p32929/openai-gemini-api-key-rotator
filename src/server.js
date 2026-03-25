@@ -152,6 +152,18 @@ class ProxyServer {
       }
 
       const { providerName, apiType, path, provider, legacy } = routeInfo;
+
+      // Check if provider is disabled
+      if (provider && provider.disabled) {
+        console.log(`[REQ-${requestId}] Provider '${providerName}' is disabled`);
+        if (isApiCall) {
+          const responseTime = Date.now() - startTime;
+          this.logApiRequest(requestId, req.method, path, providerName, 503, responseTime, `Provider '${providerName}' is disabled`, clientIp);
+        }
+        this.sendError(res, 503, `Provider '${providerName}' is currently disabled`);
+        return;
+      }
+
       console.log(`[REQ-${requestId}] Proxying to provider '${providerName}' (${apiType.toUpperCase()}): ${path}`);
 
       // Get the appropriate header based on API type
@@ -175,11 +187,6 @@ class ProxyServer {
         return;
       }
       
-      // Log the initial request
-      if (isApiCall) {
-        this.logApiRequest(requestId, req.method, path, providerName, null, null, null, clientIp);
-      }
-
       // Clean the auth header before passing to API
       const headers = this.extractRelevantHeaders(req.headers, apiType);
       if (authHeader) {
@@ -215,17 +222,51 @@ class ProxyServer {
         console.log(`[REQ-${requestId}] Using custom status codes for rotation: ${Array.from(customStatusCodes).join(', ')}`);
       }
 
-      response = await client.makeRequest(req.method, path, body, headers, customStatusCodes);
-      
-      // Log the successful response
-      if (isApiCall) {
-        const responseTime = Date.now() - startTime;
-        const error = response.statusCode >= 400 ? `HTTP ${response.statusCode}` : null;
-        this.logApiRequest(requestId, req.method, path, providerName, response.statusCode, responseTime, error, clientIp);
+      // Detect streaming request
+      const isStreaming = this.isStreamingRequest(body);
+      if (isStreaming) {
+        console.log(`[REQ-${requestId}] Streaming request detected`);
       }
-      
-      this.logApiResponse(requestId, response, body);
-      this.sendResponse(res, response);
+
+      response = await client.makeRequest(req.method, path, body, headers, customStatusCodes, isStreaming);
+
+      // Extract key info from response
+      const keyInfo = response._keyInfo || null;
+
+      if (isStreaming && response.stream) {
+        // Streaming response - pipe directly to client
+        const streamHeaders = { ...response.headers };
+        streamHeaders['access-control-allow-origin'] = '*';
+
+        res.writeHead(response.statusCode, streamHeaders);
+        response.stream.pipe(res);
+
+        response.stream.on('end', () => {
+          if (isApiCall) {
+            const responseTime = Date.now() - startTime;
+            const error = response.statusCode >= 400 ? `HTTP ${response.statusCode}` : null;
+            this.logApiRequest(requestId, req.method, path, providerName, response.statusCode, responseTime, error, clientIp, keyInfo);
+          }
+          console.log(`[REQ-${requestId}] Streaming response completed`);
+        });
+
+        response.stream.on('error', (err) => {
+          console.log(`[REQ-${requestId}] Streaming error: ${err.message}`);
+          if (!res.headersSent) {
+            this.sendError(res, 502, 'Streaming error');
+          }
+        });
+      } else {
+        // Non-streaming response
+        if (isApiCall) {
+          const responseTime = Date.now() - startTime;
+          const error = response.statusCode >= 400 ? `HTTP ${response.statusCode}` : null;
+          this.logApiRequest(requestId, req.method, path, providerName, response.statusCode, responseTime, error, clientIp, keyInfo);
+        }
+
+        this.logApiResponse(requestId, response, body);
+        this.sendResponse(res, response);
+      }
     } catch (error) {
       console.log(`[REQ-${requestId}] Request handling error: ${error.message}`);
       console.log(`[REQ-${requestId}] Response: 500 Internal Server Error`);
@@ -329,7 +370,13 @@ class ProxyServer {
     }
 
     try {
-      const keyRotator = new this.KeyRotator(provider.keys, provider.apiType);
+      // Use only enabled keys for rotation
+      const enabledKeys = provider.keys; // Already filtered by config parser
+      if (enabledKeys.length === 0) {
+        console.log(`[SERVER] Provider '${providerName}' has no enabled keys`);
+        return null;
+      }
+      const keyRotator = new this.KeyRotator(enabledKeys, provider.apiType);
       let client;
 
       if (provider.apiType === 'openai') {
@@ -477,7 +524,7 @@ class ProxyServer {
 
   sendError(res, statusCode, message) {
     console.log(`[SERVER] Sending error response: ${statusCode} - ${message}`);
-    
+
     const errorResponse = {
       error: {
         code: statusCode,
@@ -485,9 +532,22 @@ class ProxyServer {
         status: statusCode === 400 ? 'INVALID_ARGUMENT' : 'INTERNAL'
       }
     };
-    
+
     res.writeHead(statusCode, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(errorResponse));
+  }
+
+  /**
+   * Detect if a request body contains stream: true
+   */
+  isStreamingRequest(body) {
+    if (!body) return false;
+    try {
+      const parsed = typeof body === 'string' ? JSON.parse(body) : body;
+      return parsed.stream === true;
+    } catch {
+      return false;
+    }
   }
 
   logApiResponse(requestId, response, requestBody = null) {
@@ -628,6 +688,14 @@ class ProxyServer {
       await this.handleGetLogs(res);
     } else if (path.startsWith('/admin/api/response/') && req.method === 'GET') {
       await this.handleGetResponse(res, path);
+    } else if (path === '/admin/api/reorder-keys' && req.method === 'POST') {
+      await this.handleReorderKeys(res, body);
+    } else if (path === '/admin/api/key-usage' && req.method === 'GET') {
+      await this.handleGetKeyUsage(res);
+    } else if (path === '/admin/api/toggle-key' && req.method === 'POST') {
+      await this.handleToggleKey(res, body);
+    } else if (path === '/admin/api/toggle-provider' && req.method === 'POST') {
+      await this.handleToggleProvider(res, body);
     } else {
       this.sendError(res, 404, 'Not found');
     }
@@ -759,177 +827,28 @@ class ProxyServer {
     try {
       const envVars = JSON.parse(body);
       const envPath = path.join(process.cwd(), '.env');
-      
-      // Read current env to preserve admin password
+
+      // Read current env to preserve admin password and disabled states
       const currentEnvContent = fs.readFileSync(envPath, 'utf8');
       const currentEnvVars = this.config.parseEnvFile(currentEnvContent);
-      
+
       // Merge with new vars but preserve admin password
       const finalEnvVars = { ...envVars };
       if (currentEnvVars.ADMIN_PASSWORD) {
         finalEnvVars.ADMIN_PASSWORD = currentEnvVars.ADMIN_PASSWORD;
       }
-      
-      // Write new env file with nice formatting and comments
-      let envContent = '# API Key Rotator Configuration\n';
-      envContent += `# Last updated: ${new Date().toISOString()}\n\n`;
 
-      // Group environment variables by category
-      const basicConfig = {};
-      const providers = {};
-      const otherConfig = {};
-
-      Object.entries(finalEnvVars).forEach(([key, value]) => {
-        // Skip empty BASE_URL values
-        if (key === 'BASE_URL' && (!value || value.trim() === '')) {
-          return;
-        }
-
-        if (key === 'PORT' || key === 'ADMIN_PASSWORD') {
-          basicConfig[key] = value;
-        } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL') || key.endsWith('_ACCESS_KEY') || key.endsWith('_DEFAULT_MODEL') || key.endsWith('_MODEL_HISTORY')) {
-          // Extract provider info
-          const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL|ACCESS_KEY|DEFAULT_MODEL|MODEL_HISTORY)$/);
-          if (match) {
-            const apiType = match[1];
-            const providerName = match[2];
-            const keyType = match[3];
-            const providerKey = `${apiType}_${providerName}`;
-
-            if (!providers[providerKey]) {
-              providers[providerKey] = {
-                apiType,
-                providerName,
-                keys: '',
-                baseUrl: '',
-                accessKey: '',
-                defaultModel: '',
-                modelHistory: ''
-              };
-            }
-
-            if (keyType === 'API_KEYS') {
-              providers[providerKey].keys = value;
-            } else if (keyType === 'BASE_URL') {
-              providers[providerKey].baseUrl = value;
-            } else if (keyType === 'ACCESS_KEY') {
-              providers[providerKey].accessKey = value;
-            } else if (keyType === 'DEFAULT_MODEL') {
-              providers[providerKey].defaultModel = value;
-            } else if (keyType === 'MODEL_HISTORY') {
-              providers[providerKey].modelHistory = value;
-            }
-          } else {
-            otherConfig[key] = value;
-          }
-        } else {
-          otherConfig[key] = value;
-        }
-      });
-
-      // Write basic configuration
-      if (Object.keys(basicConfig).length > 0) {
-        envContent += '# Basic Configuration\n';
-        for (const [key, value] of Object.entries(basicConfig)) {
-          envContent += `${key}=${value}\n`;
-        }
-        envContent += '\n';
-      }
-
-      // Write providers grouped by type and sorted alphabetically by provider name
-      const openaiProviders = Object.values(providers)
-        .filter(p => p.apiType === 'OPENAI')
-        .sort((a, b) => a.providerName.toLowerCase().localeCompare(b.providerName.toLowerCase()));
-      const geminiProviders = Object.values(providers)
-        .filter(p => p.apiType === 'GEMINI')
-        .sort((a, b) => a.providerName.toLowerCase().localeCompare(b.providerName.toLowerCase()));
-      const otherProviders = Object.values(providers)
-        .filter(p => p.apiType !== 'OPENAI' && p.apiType !== 'GEMINI')
-        .sort((a, b) => a.providerName.toLowerCase().localeCompare(b.providerName.toLowerCase()));
-
-      if (openaiProviders.length > 0) {
-        envContent += '# OpenAI Compatible Providers\n';
-        for (const provider of openaiProviders) {
-          if (provider.keys) {
-            envContent += `${provider.apiType}_${provider.providerName}_API_KEYS=${provider.keys}\n`;
-          }
-          if (provider.baseUrl) {
-            envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
-          }
-          if (provider.accessKey) {
-            envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
-          }
-          if (provider.defaultModel) {
-            envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
-          }
-          if (provider.modelHistory) {
-            envContent += `${provider.apiType}_${provider.providerName}_MODEL_HISTORY=${provider.modelHistory}\n`;
-          }
-          envContent += '\n';
+      // Preserve _DISABLED entries from current env if not in new vars
+      for (const [key, value] of Object.entries(currentEnvVars)) {
+        if (key.endsWith('_DISABLED') && !(key in finalEnvVars)) {
+          finalEnvVars[key] = value;
         }
       }
 
-      if (geminiProviders.length > 0) {
-        envContent += '# Gemini Providers\n';
-        for (const provider of geminiProviders) {
-          if (provider.keys) {
-            envContent += `${provider.apiType}_${provider.providerName}_API_KEYS=${provider.keys}\n`;
-          }
-          if (provider.baseUrl) {
-            envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
-          }
-          if (provider.accessKey) {
-            envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
-          }
-          if (provider.defaultModel) {
-            envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
-          }
-          if (provider.modelHistory) {
-            envContent += `${provider.apiType}_${provider.providerName}_MODEL_HISTORY=${provider.modelHistory}\n`;
-          }
-          envContent += '\n';
-        }
-      }
-
-      if (otherProviders.length > 0) {
-        envContent += '# Other Providers\n';
-        for (const provider of otherProviders) {
-          if (provider.keys) {
-            envContent += `${provider.apiType}_${provider.providerName}_API_KEYS=${provider.keys}\n`;
-          }
-          if (provider.baseUrl) {
-            envContent += `${provider.apiType}_${provider.providerName}_BASE_URL=${provider.baseUrl}\n`;
-          }
-          if (provider.accessKey) {
-            envContent += `${provider.apiType}_${provider.providerName}_ACCESS_KEY=${provider.accessKey}\n`;
-          }
-          if (provider.defaultModel) {
-            envContent += `${provider.apiType}_${provider.providerName}_DEFAULT_MODEL=${provider.defaultModel}\n`;
-          }
-          if (provider.modelHistory) {
-            envContent += `${provider.apiType}_${provider.providerName}_MODEL_HISTORY=${provider.modelHistory}\n`;
-          }
-          envContent += '\n';
-        }
-      }
-
-      // Write other configuration
-      if (Object.keys(otherConfig).length > 0) {
-        envContent += '# Additional Configuration\n';
-        for (const [key, value] of Object.entries(otherConfig)) {
-          envContent += `${key}=${value}\n`;
-        }
-      }
-      
-      fs.writeFileSync(envPath, envContent);
-      
-      
-      // Reload configuration
+      this.writeEnvFile(finalEnvVars);
       this.config.loadConfig();
-      
-      // Reinitialize API clients with updated configuration
       this.reinitializeClients();
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     } catch (error) {
@@ -1125,7 +1044,7 @@ class ProxyServer {
   }
   
   
-  logApiRequest(requestId, method, endpoint, provider, status = null, responseTime = null, error = null, clientIp = null) {
+  logApiRequest(requestId, method, endpoint, provider, status = null, responseTime = null, error = null, clientIp = null, keyInfo = null) {
     const logEntry = {
       timestamp: new Date().toISOString(),
       requestId: requestId || 'unknown',
@@ -1135,7 +1054,9 @@ class ProxyServer {
       status: status,
       responseTime: responseTime,
       error: error,
-      clientIp: clientIp
+      clientIp: clientIp,
+      keyUsed: keyInfo ? keyInfo.keyUsed : null,
+      failedKeys: keyInfo ? keyInfo.failedKeys : []
     };
     
     // Add to buffer (keep last 100 entries in RAM only)
@@ -1202,6 +1123,238 @@ class ProxyServer {
     } catch (error) {
       this.sendError(res, 500, 'Failed to get response data');
     }
+  }
+
+  /**
+   * Reorder keys for a provider
+   * Body: { apiType: string, providerName: string, keys: string[] }
+   */
+  async handleReorderKeys(res, body) {
+    try {
+      const { apiType, providerName, keys } = JSON.parse(body);
+      if (!apiType || !providerName || !Array.isArray(keys)) {
+        this.sendError(res, 400, 'Missing apiType, providerName, or keys array');
+        return;
+      }
+
+      const envPath = path.join(process.cwd(), '.env');
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = this.config.parseEnvFile(envContent);
+
+      const envKey = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
+
+      // Preserve disabled state: build new key string with ~ prefix for disabled keys
+      const currentValue = envVars[envKey] || '';
+      const currentParsed = this.config.parseApiKeysWithState(currentValue);
+      const disabledSet = new Set(currentParsed.allKeys.filter(k => k.disabled).map(k => k.key));
+
+      const newKeysStr = keys.map(k => disabledSet.has(k) ? `~${k}` : k).join(',');
+      envVars[envKey] = newKeysStr;
+
+      // Write updated env
+      this.writeEnvFile(envVars);
+      this.config.loadConfig();
+      this.reinitializeClients();
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (error) {
+      this.sendError(res, 500, 'Failed to reorder keys: ' + error.message);
+    }
+  }
+
+  /**
+   * Get key usage statistics for all providers
+   */
+  async handleGetKeyUsage(res) {
+    try {
+      const usage = {};
+
+      const mapStats = (stats) => stats.map(s => ({
+        key: s.key,
+        fullKey: s.fullKey,
+        usageCount: s.usageCount
+      }));
+
+      // Get usage from provider clients
+      for (const [providerName, client] of this.providerClients.entries()) {
+        if (client.keyRotator) {
+          usage[providerName] = mapStats(client.keyRotator.getKeyUsageStats());
+        }
+      }
+
+      // Legacy clients
+      if (this.geminiClient && this.geminiClient.keyRotator && !usage['gemini']) {
+        usage['gemini'] = mapStats(this.geminiClient.keyRotator.getKeyUsageStats());
+      }
+      if (this.openaiClient && this.openaiClient.keyRotator && !usage['openai']) {
+        usage['openai'] = mapStats(this.openaiClient.keyRotator.getKeyUsageStats());
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(usage));
+    } catch (error) {
+      this.sendError(res, 500, 'Failed to get key usage');
+    }
+  }
+
+  /**
+   * Toggle a key's disabled state
+   * Body: { apiType: string, providerName: string, keyIndex: number, disabled: boolean }
+   */
+  async handleToggleKey(res, body) {
+    try {
+      const { apiType, providerName, keyIndex, disabled } = JSON.parse(body);
+      if (!apiType || !providerName || keyIndex === undefined) {
+        this.sendError(res, 400, 'Missing apiType, providerName, or keyIndex');
+        return;
+      }
+
+      const envPath = path.join(process.cwd(), '.env');
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = this.config.parseEnvFile(envContent);
+
+      const envKey = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
+      const currentValue = envVars[envKey] || '';
+      const parsed = this.config.parseApiKeysWithState(currentValue);
+
+      if (keyIndex < 0 || keyIndex >= parsed.allKeys.length) {
+        this.sendError(res, 400, 'Invalid key index');
+        return;
+      }
+
+      parsed.allKeys[keyIndex].disabled = disabled;
+
+      // Rebuild key string
+      const newKeysStr = parsed.allKeys.map(k => k.disabled ? `~${k.key}` : k.key).join(',');
+      envVars[envKey] = newKeysStr;
+
+      this.writeEnvFile(envVars);
+      this.config.loadConfig();
+      this.reinitializeClients();
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (error) {
+      this.sendError(res, 500, 'Failed to toggle key: ' + error.message);
+    }
+  }
+
+  /**
+   * Toggle a provider's disabled state
+   * Body: { apiType: string, providerName: string, disabled: boolean }
+   */
+  async handleToggleProvider(res, body) {
+    try {
+      const { apiType, providerName, disabled } = JSON.parse(body);
+      if (!apiType || !providerName) {
+        this.sendError(res, 400, 'Missing apiType or providerName');
+        return;
+      }
+
+      const envPath = path.join(process.cwd(), '.env');
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = this.config.parseEnvFile(envContent);
+
+      const envKey = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_DISABLED`;
+
+      if (disabled) {
+        envVars[envKey] = 'true';
+      } else {
+        delete envVars[envKey];
+      }
+
+      this.writeEnvFile(envVars);
+      this.config.loadConfig();
+      this.reinitializeClients();
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (error) {
+      this.sendError(res, 500, 'Failed to toggle provider: ' + error.message);
+    }
+  }
+
+  /**
+   * Write env vars back to .env file (shared helper)
+   */
+  writeEnvFile(envVars) {
+    const envPath = path.join(process.cwd(), '.env');
+
+    let envContent = '# API Key Rotator Configuration\n';
+    envContent += `# Last updated: ${new Date().toISOString()}\n\n`;
+
+    const basicConfig = {};
+    const providers = {};
+    const otherConfig = {};
+
+    Object.entries(envVars).forEach(([key, value]) => {
+      if (key === 'BASE_URL' && (!value || value.trim() === '')) return;
+
+      if (key === 'PORT' || key === 'ADMIN_PASSWORD') {
+        basicConfig[key] = value;
+      } else if (key.endsWith('_API_KEYS') || key.endsWith('_BASE_URL') || key.endsWith('_ACCESS_KEY') || key.endsWith('_DEFAULT_MODEL') || key.endsWith('_MODEL_HISTORY') || key.endsWith('_DISABLED')) {
+        const match = key.match(/^(.+?)_(.+?)_(API_KEYS|BASE_URL|ACCESS_KEY|DEFAULT_MODEL|MODEL_HISTORY|DISABLED)$/);
+        if (match) {
+          const apiType = match[1];
+          const provName = match[2];
+          const keyType = match[3];
+          const providerKey = `${apiType}_${provName}`;
+
+          if (!providers[providerKey]) {
+            providers[providerKey] = { apiType, providerName: provName, keys: '', baseUrl: '', accessKey: '', defaultModel: '', modelHistory: '', disabled: '' };
+          }
+
+          if (keyType === 'API_KEYS') providers[providerKey].keys = value;
+          else if (keyType === 'BASE_URL') providers[providerKey].baseUrl = value;
+          else if (keyType === 'ACCESS_KEY') providers[providerKey].accessKey = value;
+          else if (keyType === 'DEFAULT_MODEL') providers[providerKey].defaultModel = value;
+          else if (keyType === 'MODEL_HISTORY') providers[providerKey].modelHistory = value;
+          else if (keyType === 'DISABLED') providers[providerKey].disabled = value;
+        } else {
+          otherConfig[key] = value;
+        }
+      } else {
+        otherConfig[key] = value;
+      }
+    });
+
+    if (Object.keys(basicConfig).length > 0) {
+      envContent += '# Basic Configuration\n';
+      for (const [key, value] of Object.entries(basicConfig)) {
+        envContent += `${key}=${value}\n`;
+      }
+      envContent += '\n';
+    }
+
+    const writeProviders = (list, comment) => {
+      if (list.length > 0) {
+        envContent += `# ${comment}\n`;
+        for (const p of list) {
+          if (p.keys) envContent += `${p.apiType}_${p.providerName}_API_KEYS=${p.keys}\n`;
+          if (p.baseUrl) envContent += `${p.apiType}_${p.providerName}_BASE_URL=${p.baseUrl}\n`;
+          if (p.accessKey) envContent += `${p.apiType}_${p.providerName}_ACCESS_KEY=${p.accessKey}\n`;
+          if (p.defaultModel) envContent += `${p.apiType}_${p.providerName}_DEFAULT_MODEL=${p.defaultModel}\n`;
+          if (p.modelHistory) envContent += `${p.apiType}_${p.providerName}_MODEL_HISTORY=${p.modelHistory}\n`;
+          if (p.disabled && p.disabled === 'true') envContent += `${p.apiType}_${p.providerName}_DISABLED=true\n`;
+          envContent += '\n';
+        }
+      }
+    };
+
+    const allProviders = Object.values(providers).sort((a, b) => a.providerName.toLowerCase().localeCompare(b.providerName.toLowerCase()));
+    writeProviders(allProviders.filter(p => p.apiType === 'OPENAI'), 'OpenAI Compatible Providers');
+    writeProviders(allProviders.filter(p => p.apiType === 'GEMINI'), 'Gemini Providers');
+    writeProviders(allProviders.filter(p => p.apiType !== 'OPENAI' && p.apiType !== 'GEMINI'), 'Other Providers');
+
+    if (Object.keys(otherConfig).length > 0) {
+      envContent += '# Additional Configuration\n';
+      for (const [key, value] of Object.entries(otherConfig)) {
+        envContent += `${key}=${value}\n`;
+      }
+    }
+
+    fs.writeFileSync(envPath, envContent);
   }
 
   serveAdminPanel(res) {

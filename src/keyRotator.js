@@ -3,6 +3,11 @@ class KeyRotator {
     this.apiKeys = [...apiKeys];
     this.apiType = apiType;
     this.lastFailedKey = null; // Track the key that failed in the last request
+    this.keyUsageCount = new Map(); // Track per-key usage count
+    // Initialize usage counts for all keys
+    for (const key of this.apiKeys) {
+      this.keyUsageCount.set(key, 0);
+    }
     console.log(`[${apiType.toUpperCase()}-ROTATOR] Initialized with ${this.apiKeys.length} API keys`);
   }
 
@@ -24,6 +29,30 @@ class KeyRotator {
       const maskedKey = this.maskApiKey(failedKey);
       console.log(`[${this.apiType.toUpperCase()}-ROTATOR] Last failed key updated: ${maskedKey}`);
     }
+  }
+
+  /**
+   * Increment usage count for a key (called on successful use)
+   */
+  incrementKeyUsage(key) {
+    if (this.keyUsageCount.has(key)) {
+      this.keyUsageCount.set(key, this.keyUsageCount.get(key) + 1);
+    }
+  }
+
+  /**
+   * Get usage statistics for all keys
+   */
+  getKeyUsageStats() {
+    const stats = [];
+    for (const key of this.apiKeys) {
+      stats.push({
+        key: this.maskApiKey(key),
+        fullKey: key,
+        usageCount: this.keyUsageCount.get(key) || 0
+      });
+    }
+    return stats;
   }
 
   getTotalKeysCount() {

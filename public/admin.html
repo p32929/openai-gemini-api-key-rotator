@@ -74,6 +74,61 @@
         * {
             box-sizing: border-box;
         }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        .toggle-switch.toggle-sm {
+            width: 28px;
+            height: 16px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--muted);
+            border: 1px solid var(--border);
+            transition: 0.2s;
+            border-radius: 20px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 2px;
+            bottom: 2px;
+            background-color: var(--muted-foreground);
+            transition: 0.2s;
+            border-radius: 50%;
+        }
+        .toggle-sm .toggle-slider:before {
+            height: 10px;
+            width: 10px;
+            left: 2px;
+            bottom: 2px;
+        }
+        input:checked + .toggle-slider {
+            background-color: var(--success);
+            border-color: var(--success);
+        }
+        input:checked + .toggle-slider:before {
+            background-color: white;
+            transform: translateX(16px);
+        }
+        .toggle-sm input:checked + .toggle-slider:before {
+            transform: translateX(12px);
+        }
         
         body {
             background-color: var(--background);
@@ -1140,10 +1195,15 @@
         // Environment variables functionality
         async function loadEnvVars() {
             try {
-                const response = await fetch('/admin/api/env');
-                envVars = await response.json();
+                const [envResponse, usageResponse] = await Promise.all([
+                    fetch('/admin/api/env'),
+                    fetch('/admin/api/key-usage').catch(() => ({ ok: false }))
+                ]);
+                envVars = await envResponse.json();
+                if (usageResponse.ok) {
+                    keyUsageData = await usageResponse.json();
+                }
                 renderEnvVars();
-                // Update provider preview when env vars are loaded
                 updateProviderPreview();
             } catch (error) {
                 showError('envError', 'Failed to load environment variables: ' + error.message);
@@ -1151,6 +1211,7 @@
         }
         
         let originalValues = {};
+        let keyUsageData = {};
         
         function renderEnvVars() {
             
@@ -1188,7 +1249,25 @@
                                 modelHistory: []
                             };
                         }
-                        providers[providerKey].keys = value.split(',').map(k => k.trim()).filter(k => k);
+                        const rawKeys = value.split(',').map(k => k.trim()).filter(k => k);
+                        providers[providerKey].keys = rawKeys.map(k => {
+                            if (k.startsWith('~')) {
+                                return { key: k.substring(1), disabled: true };
+                            }
+                            return { key: k, disabled: false };
+                        });
+                    }
+                } else if (key.endsWith('_DISABLED') && value) {
+                    const keyWithoutSuffix = key.replace('_DISABLED', '');
+                    const firstUnderscoreIndex = keyWithoutSuffix.indexOf('_');
+                    if (firstUnderscoreIndex > 0) {
+                        const apiType = keyWithoutSuffix.substring(0, firstUnderscoreIndex).toLowerCase();
+                        const providerName = keyWithoutSuffix.substring(firstUnderscoreIndex + 1).toLowerCase();
+                        const providerKey = `${apiType}_${providerName}`;
+                        if (!providers[providerKey]) {
+                            providers[providerKey] = { name: providerName, apiType: apiType, keys: [], baseUrl: '', accessKey: '', defaultModel: '', modelHistory: [] };
+                        }
+                        providers[providerKey].disabled = (value.trim().toLowerCase() === 'true');
                     }
                 } else if (key.endsWith('_BASE_URL') && value) {
                     const match = key.match(/^(.+)_(.+)_BASE_URL$/);
@@ -1340,13 +1419,23 @@
                     defaultModelTitle = 'Nothing to save';
                 }
 
+                const enabledKeyCount = provider.keys.filter(k => !k.disabled).length;
+                const totalKeyCount = provider.keys.length;
+                const isProviderDisabled = provider.disabled || false;
+
                 providerDiv.innerHTML = `
-                    <div class="space-y-4">
+                    <div class="space-y-4${isProviderDisabled ? ' opacity-60' : ''}">
                         <!-- Header with provider name and actions -->
                         <div class="flex items-center justify-between">
-                            <div id="provider-name-${provider.apiType}-${provider.name}">
-                                <h4 class="text-sm font-medium text-foreground">${provider.name}</h4>
-                                <p class="text-xs text-muted-foreground">${provider.apiType.toUpperCase()} Compatible • ${provider.keys.length} keys</p>
+                            <div class="flex items-center space-x-3">
+                                <label class="toggle-switch" title="${isProviderDisabled ? 'Enable provider' : 'Disable provider'}">
+                                    <input type="checkbox" ${!isProviderDisabled ? 'checked' : ''} onchange="toggleProvider('${provider.apiType}', '${provider.name}', !this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <div id="provider-name-${provider.apiType}-${provider.name}">
+                                    <h4 class="text-sm font-medium text-foreground">${provider.name}${isProviderDisabled ? ' <span class="text-xs text-destructive font-normal">(disabled)</span>' : ''}</h4>
+                                    <p class="text-xs text-muted-foreground">${provider.apiType.toUpperCase()} Compatible • ${enabledKeyCount}/${totalKeyCount} keys active</p>
+                                </div>
                             </div>
                             <div class="flex items-center space-x-2">
                                 <button
@@ -1364,7 +1453,7 @@
                                     class="btn btn-secondary px-2 py-1 text-xs font-medium"
                                     title="Copy cURL test command"
                                 >
-                                    📋 Copy cURL
+                                    Copy cURL
                                 </button>
                                 <button
                                     onclick="showDeleteProviderConfirmation('${provider.apiType}', '${provider.name}')"
@@ -1528,26 +1617,51 @@
                         <div>
                             <label class="block text-muted-foreground mb-1 text-xs">API Keys</label>
                             <div class="space-y-1">
-                                ${provider.keys.map((key, keyIndex) => `
-                                    <div class="flex items-center space-x-2">
-                                        <div class="flex-1 font-mono text-xs text-foreground bg-muted px-2 py-1 rounded">
-                                            ${key.length > 16 ? key.substring(0, 8) + '...' + key.slice(-4) : key}
+                                ${provider.keys.map((keyObj, keyIndex) => {
+                                    const keyVal = keyObj.key;
+                                    const isKeyDisabled = keyObj.disabled;
+                                    const maskedKey = keyVal.length > 16 ? keyVal.substring(0, 8) + '...' + keyVal.slice(-4) : keyVal;
+                                    const usageEntry = (keyUsageData[provider.name] || []).find(u => u.fullKey === keyVal);
+                                    const usageDisplay = usageEntry ? usageEntry.usageCount : 0;
+                                    return `
+                                    <div class="flex items-center space-x-2${isKeyDisabled ? ' opacity-50' : ''}">
+                                        <!-- Reorder arrows -->
+                                        <div class="flex flex-col">
+                                            <button onclick="moveKey('${provider.apiType}', '${provider.name}', ${keyIndex}, 'up')"
+                                                class="text-muted-foreground hover:text-foreground p-0 leading-none${keyIndex === 0 ? ' invisible' : ''}" title="Move up">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                            </button>
+                                            <button onclick="moveKey('${provider.apiType}', '${provider.name}', ${keyIndex}, 'down')"
+                                                class="text-muted-foreground hover:text-foreground p-0 leading-none${keyIndex === provider.keys.length - 1 ? ' invisible' : ''}" title="Move down">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                            </button>
                                         </div>
-                                        <button 
-                                            onclick="testProviderKey('${provider.apiType}', '${provider.name}', '${key}', ${keyIndex})" 
+                                        <!-- Toggle key -->
+                                        <label class="toggle-switch toggle-sm" title="${isKeyDisabled ? 'Enable key' : 'Disable key'}">
+                                            <input type="checkbox" ${!isKeyDisabled ? 'checked' : ''} onchange="toggleKey('${provider.apiType}', '${provider.name}', ${keyIndex}, !this.checked)">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <!-- Key value -->
+                                        <div class="flex-1 font-mono text-xs text-foreground bg-muted px-2 py-1 rounded${isKeyDisabled ? ' line-through' : ''}">
+                                            ${maskedKey}
+                                        </div>
+                                        <!-- Usage count -->
+                                        <span class="text-xs text-muted-foreground whitespace-nowrap" title="Times used">${usageDisplay} uses</span>
+                                        <button
+                                            onclick="testProviderKey('${provider.apiType}', '${provider.name}', '${keyVal}', ${keyIndex})"
                                             class="btn btn-secondary px-2 py-1 text-xs font-medium"
                                         >
                                             Test
                                         </button>
-                                        <button 
-                                            onclick="showDeleteKeyConfirmation('${provider.apiType}', '${provider.name}', ${keyIndex})" 
+                                        <button
+                                            onclick="showDeleteKeyConfirmation('${provider.apiType}', '${provider.name}', ${keyIndex})"
                                             class="btn btn-destructive px-2 py-1 text-xs font-medium"
                                             title="Delete Key"
                                         >
                                             Delete
                                         </button>
-                                    </div>
-                                `).join('')}
+                                    </div>`;
+                                }).join('')}
                                 <div class="flex items-center space-x-2 mt-2 pt-2 border-t border-border">
                                     <input 
                                         type="text" 
@@ -1586,11 +1700,81 @@
         function updateEnvVar(key, value) {
             envVars[key] = value;
         }
-        
+
+        async function toggleKey(apiType, providerName, keyIndex, disabled) {
+            try {
+                const response = await fetch('/admin/api/toggle-key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiType, providerName, keyIndex, disabled })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showSuccessToast(disabled ? 'Key disabled' : 'Key enabled');
+                    await loadEnvVars();
+                } else {
+                    showErrorToast('Failed to toggle key');
+                }
+            } catch (error) {
+                showErrorToast('Failed to toggle key: ' + error.message);
+            }
+        }
+
+        async function toggleProvider(apiType, providerName, disabled) {
+            try {
+                const response = await fetch('/admin/api/toggle-provider', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiType, providerName, disabled })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showSuccessToast(disabled ? 'Provider disabled' : 'Provider enabled');
+                    await loadEnvVars();
+                } else {
+                    showErrorToast('Failed to toggle provider');
+                }
+            } catch (error) {
+                showErrorToast('Failed to toggle provider: ' + error.message);
+            }
+        }
+
+        async function moveKey(apiType, providerName, keyIndex, direction) {
+            // Read current key order from env
+            const envKey = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_API_KEYS`;
+            const currentValue = envVars[envKey] || '';
+            const rawKeys = currentValue.split(',').map(k => k.trim()).filter(k => k);
+
+            const newIndex = direction === 'up' ? keyIndex - 1 : keyIndex + 1;
+            if (newIndex < 0 || newIndex >= rawKeys.length) return;
+
+            // Swap keys (keeping ~ prefix intact)
+            [rawKeys[keyIndex], rawKeys[newIndex]] = [rawKeys[newIndex], rawKeys[keyIndex]];
+
+            // Extract clean keys (without ~ prefix) for the reorder API
+            const cleanKeys = rawKeys.map(k => k.startsWith('~') ? k.substring(1) : k);
+
+            try {
+                const response = await fetch('/admin/api/reorder-keys', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiType, providerName, keys: cleanKeys })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    await loadEnvVars();
+                } else {
+                    showErrorToast('Failed to reorder keys');
+                }
+            } catch (error) {
+                showErrorToast('Failed to reorder keys: ' + error.message);
+            }
+        }
+
         // Removed old input change handlers - no longer needed
-        
+
         // Legacy functions removed - using provider management instead
-        
+
         // Moved to removeLegacyKey function
         
         // Confirmation dialog variables
@@ -3043,35 +3227,23 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 let processedLogs;
                 
                 if (isJsonFormat) {
-                    // Deduplicate logs more aggressively
+                    // Deduplicate logs - keep the LAST (most complete) entry per requestId
                     const seenRequests = new Map();
-                    const uniqueLogs = [];
-                    
+
                     for (const log of data.logs) {
                         let key;
                         if (typeof log === 'object' && log.requestId) {
-                            // For objects with requestId, use only requestId as the key
-                            // This ensures we only show each request once
                             key = log.requestId;
                         } else if (typeof log === 'string') {
-                            // Extract requestId from string format logs
                             const reqIdMatch = log.match(/\[([a-zA-Z0-9]+)\]/);
-                            if (reqIdMatch) {
-                                key = reqIdMatch[1];
-                            } else {
-                                // Use the entire string as key if no ID found
-                                key = log;
-                            }
+                            key = reqIdMatch ? reqIdMatch[1] : log;
                         } else {
-                            // Fallback to stringified object
                             key = JSON.stringify(log);
                         }
-                        
-                        if (!seenRequests.has(key)) {
-                            seenRequests.set(key, true);
-                            uniqueLogs.push(log);
-                        }
+                        // Always overwrite - last entry wins (has status + key info)
+                        seenRequests.set(key, log);
                     }
+                    const uniqueLogs = [...seenRequests.values()];
                     
                     // New JSON format - create formatted display
                     processedLogs = uniqueLogs.map(log => {
@@ -3102,7 +3274,17 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                                 statusColor = 'text-yellow-400';
                             }
                             
-                            const logLine = `<span class="text-gray-400">${timestamp}</span> <span class="text-blue-400">[${log.requestId}]</span> <span class="text-white">${log.method} ${log.endpoint}</span> <span class="text-cyan-400">(${log.provider})</span> <span class="${statusColor}">${status}</span> <span class="text-gray-400">${responseTime}</span><span class="text-red-400">${error}</span>`;
+                            // Key usage info
+                            let keyInfoHtml = '';
+                            if (log.keyUsed) {
+                                keyInfoHtml += ` <span class="text-green-300" title="Key used successfully">key:${log.keyUsed}</span>`;
+                            }
+                            if (log.failedKeys && log.failedKeys.length > 0) {
+                                const failedList = log.failedKeys.map(fk => `${fk.key}(${fk.status || 'err'})`).join(', ');
+                                keyInfoHtml += ` <span class="text-orange-400" title="Failed keys">failed:[${failedList}]</span>`;
+                            }
+
+                            const logLine = `<span class="text-gray-400">${timestamp}</span> <span class="text-blue-400">[${log.requestId}]</span> <span class="text-white">${log.method} ${log.endpoint}</span> <span class="text-cyan-400">(${log.provider})</span> <span class="${statusColor}">${status}</span> <span class="text-gray-400">${responseTime}</span>${keyInfoHtml}<span class="text-red-400">${error}</span>`;
                             
                             // Add view button if we have detailed response data
                             if (log.requestId && log.requestId !== 'unknown') {
