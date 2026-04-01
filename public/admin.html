@@ -455,6 +455,13 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
+                        <!-- Settings Button -->
+                        <button onclick="openSettingsModal()" class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Settings">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
                         <!-- Dark Mode Toggle -->
                         <div class="flex items-center space-x-1.5">
                             <svg class="w-3 h-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3661,5 +3668,134 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             checkAuth();
         });
     </script>
+<!-- Settings Modal -->
+<div id="settingsModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeSettingsModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-card border border-border rounded-lg shadow-xl w-full max-w-lg relative">
+            <div class="flex items-center justify-between p-4 border-b border-border">
+                <h3 class="text-lg font-semibold text-foreground">Settings</h3>
+                <button onclick="closeSettingsModal()" class="text-muted-foreground hover:text-foreground p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4 space-y-5 max-h-[70vh] overflow-y-auto">
+                <!-- Telegram Bot Section -->
+                <div>
+                    <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                        </svg>
+                        Telegram Bot
+                    </h4>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Bot Token</label>
+                            <input type="password" id="telegramBotToken" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="123456789:ABCdefGhIjKlMnOpQrStUvWxYz">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Allowed User IDs <span class="text-muted-foreground font-normal">(comma-separated, leave empty to allow all)</span></label>
+                            <input type="text" id="telegramAllowedUsers" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="123456789, 987654321">
+                        </div>
+                        <div id="telegramBotStatus" class="text-xs"></div>
+
+                        <button onclick="saveTelegramSettings()" class="btn btn-primary w-full py-2 text-sm font-medium">Save Telegram Settings</button>
+
+                        <div class="border border-border rounded-md p-3 bg-muted/30">
+                            <p class="text-xs font-medium text-foreground mb-2">How to set up:</p>
+                            <ol class="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
+                                <li>Open Telegram and search for <strong>@BotFather</strong></li>
+                                <li>Send <code class="bg-muted px-1 rounded">/newbot</code> and follow the prompts</li>
+                                <li>Copy the bot token and paste it above</li>
+                                <li>To get your User ID, search for <strong>@userinfobot</strong> on Telegram and send it any message</li>
+                                <li>Add your User ID to the allowed list (or leave empty to allow anyone)</li>
+                            </ol>
+                            <div class="mt-2 pt-2 border-t border-border">
+                                <p class="text-xs font-medium text-foreground mb-1">Bot commands:</p>
+                                <div class="text-xs text-muted-foreground space-y-0.5">
+                                    <p><code class="bg-muted px-1 rounded">/models</code> - Select provider & model</p>
+                                    <p><code class="bg-muted px-1 rounded">/clear</code> - Clear conversation history</p>
+                                    <p><code class="bg-muted px-1 rounded">/logs</code> - View recent API logs</p>
+                                    <p><code class="bg-muted px-1 rounded">/status</code> - Show current model info</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openSettingsModal() {
+        document.getElementById('settingsModal').classList.remove('hidden');
+        loadTelegramSettings();
+    }
+
+    function closeSettingsModal() {
+        document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !document.getElementById('settingsModal').classList.contains('hidden')) {
+            closeSettingsModal();
+        }
+    });
+
+    async function loadTelegramSettings() {
+        try {
+            const response = await fetch('/admin/api/telegram');
+            if (!response.ok) return;
+            const data = await response.json();
+
+            document.getElementById('telegramBotToken').value = data.botToken || '';
+            document.getElementById('telegramAllowedUsers').value = data.allowedUsers || '';
+
+            const statusEl = document.getElementById('telegramBotStatus');
+            if (data.botRunning) {
+                statusEl.innerHTML = '<span class="text-green-500 font-medium">Bot is running</span>';
+            } else if (data.botToken) {
+                statusEl.innerHTML = '<span class="text-yellow-500 font-medium">Bot token set but not running</span>';
+            } else {
+                statusEl.innerHTML = '<span class="text-muted-foreground">Bot not configured</span>';
+            }
+        } catch (err) {
+            console.error('Failed to load telegram settings:', err);
+        }
+    }
+
+    async function saveTelegramSettings() {
+        const botToken = document.getElementById('telegramBotToken').value.trim();
+        const allowedUsers = document.getElementById('telegramAllowedUsers').value.trim();
+        const statusEl = document.getElementById('telegramBotStatus');
+
+        try {
+            const response = await fetch('/admin/api/telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ botToken, allowedUsers })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                if (data.botRunning) {
+                    statusEl.innerHTML = '<span class="text-green-500 font-medium">Settings saved - Bot is running</span>';
+                } else {
+                    statusEl.innerHTML = '<span class="text-muted-foreground">Settings saved - Bot stopped (no token)</span>';
+                }
+                showSuccessToast('Telegram settings saved');
+            } else {
+                statusEl.innerHTML = '<span class="text-red-500 font-medium">Failed to save</span>';
+            }
+        } catch (err) {
+            statusEl.innerHTML = '<span class="text-red-500 font-medium">Error: ' + err.message + '</span>';
+        }
+    }
+</script>
 </body>
 </html>

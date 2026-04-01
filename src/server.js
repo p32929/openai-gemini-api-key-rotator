@@ -3,6 +3,7 @@ const { URL } = require('url');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const TelegramBot = require('./telegramBot');
 
 class ProxyServer {
   constructor(config, geminiClient = null, openaiClient = null) {
@@ -15,6 +16,12 @@ class ProxyServer {
     this.logBuffer = []; // Store logs in RAM only (last 100 entries)
     this.responseStorage = new Map(); // Store response data for viewing
 
+    // File logging - debounced write
+    this.pendingLogEntries = [];
+    this.logFlushTimer = null;
+    this.logFlushDelay = 5000; // 5 second debounce
+    this.logFilePath = path.join(process.cwd(), 'logs.jsonl');
+
     // Rate limiting for login
     this.failedLoginAttempts = 0;
     this.loginBlockedUntil = null;
@@ -23,6 +30,10 @@ class ProxyServer {
     this.KeyRotator = require('./keyRotator');
     this.GeminiClient = require('./geminiClient');
     this.OpenAIClient = require('./openaiClient');
+
+    // Telegram bot
+    this.telegramBot = new TelegramBot(this);
+    this.initTelegramBot();
   }
 
   start() {
@@ -731,6 +742,10 @@ class ProxyServer {
       await this.handleToggleKey(res, body);
     } else if (path === '/admin/api/toggle-provider' && req.method === 'POST') {
       await this.handleToggleProvider(res, body);
+    } else if (path === '/admin/api/telegram' && req.method === 'GET') {
+      await this.handleGetTelegramSettings(res);
+    } else if (path === '/admin/api/telegram' && req.method === 'POST') {
+      await this.handleUpdateTelegramSettings(res, body);
     } else {
       this.sendError(res, 404, 'Not found');
     }
@@ -824,8 +839,10 @@ class ProxyServer {
       const envContent = fs.readFileSync(envPath, 'utf8');
       const envVars = this.config.parseEnvFile(envContent);
 
-      // Don't send the admin password
+      // Don't send sensitive config
       delete envVars.ADMIN_PASSWORD;
+      delete envVars.TELEGRAM_BOT_TOKEN;
+      delete envVars.TELEGRAM_ALLOWED_USERS;
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(envVars));
@@ -873,9 +890,9 @@ class ProxyServer {
         finalEnvVars.ADMIN_PASSWORD = currentEnvVars.ADMIN_PASSWORD;
       }
 
-      // Preserve _DISABLED entries from current env if not in new vars
+      // Preserve _DISABLED and TELEGRAM_ entries from current env if not in new vars
       for (const [key, value] of Object.entries(currentEnvVars)) {
-        if (key.endsWith('_DISABLED') && !(key in finalEnvVars)) {
+        if ((key.endsWith('_DISABLED') || key.startsWith('TELEGRAM_')) && !(key in finalEnvVars)) {
           finalEnvVars[key] = value;
         }
       }
@@ -1098,6 +1115,38 @@ class ProxyServer {
     this.logBuffer.push(logEntry);
     if (this.logBuffer.length > 100) {
       this.logBuffer.shift();
+    }
+
+    // Queue for file write (debounced)
+    this.pendingLogEntries.push(logEntry);
+    if (this.logFlushTimer) clearTimeout(this.logFlushTimer);
+    this.logFlushTimer = setTimeout(() => this.flushLogs(), this.logFlushDelay);
+  }
+
+  flushLogs(sync = false) {
+    if (this.pendingLogEntries.length === 0) return;
+
+    const entries = this.pendingLogEntries;
+    this.pendingLogEntries = [];
+    if (this.logFlushTimer) {
+      clearTimeout(this.logFlushTimer);
+      this.logFlushTimer = null;
+    }
+
+    const lines = entries.map(e => JSON.stringify(e)).join('\n') + '\n';
+
+    if (sync) {
+      try {
+        fs.appendFileSync(this.logFilePath, lines);
+      } catch (err) {
+        console.log(`[LOG] Failed to write to log file: ${err.message}`);
+      }
+    } else {
+      fs.appendFile(this.logFilePath, lines, (err) => {
+        if (err) {
+          console.log(`[LOG] Failed to write to log file: ${err.message}`);
+        }
+      });
     }
   }
 
@@ -1435,7 +1484,89 @@ class ProxyServer {
     console.log(`[SERVER] ${this.config.getProviders().size} providers available for dynamic initialization`);
   }
 
+  initTelegramBot() {
+    try {
+      const envPath = path.join(process.cwd(), '.env');
+      if (!fs.existsSync(envPath)) return;
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = this.config.parseEnvFile(envContent);
+
+      const token = envVars.TELEGRAM_BOT_TOKEN;
+      const allowedUsers = envVars.TELEGRAM_ALLOWED_USERS
+        ? envVars.TELEGRAM_ALLOWED_USERS.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+
+      if (token) {
+        this.telegramBot.start(token, allowedUsers);
+      }
+    } catch (err) {
+      console.log(`[TELEGRAM] Init error: ${err.message}`);
+    }
+  }
+
+  async handleGetTelegramSettings(res) {
+    try {
+      const envPath = path.join(process.cwd(), '.env');
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = this.config.parseEnvFile(envContent);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        botToken: envVars.TELEGRAM_BOT_TOKEN || '',
+        allowedUsers: envVars.TELEGRAM_ALLOWED_USERS || '',
+        botRunning: this.telegramBot.polling
+      }));
+    } catch (error) {
+      this.sendError(res, 500, 'Failed to read telegram settings');
+    }
+  }
+
+  async handleUpdateTelegramSettings(res, body) {
+    try {
+      const { botToken, allowedUsers } = JSON.parse(body);
+      const envPath = path.join(process.cwd(), '.env');
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = this.config.parseEnvFile(envContent);
+
+      if (botToken !== undefined) {
+        if (botToken) {
+          envVars.TELEGRAM_BOT_TOKEN = botToken;
+        } else {
+          delete envVars.TELEGRAM_BOT_TOKEN;
+        }
+      }
+      if (allowedUsers !== undefined) {
+        if (allowedUsers) {
+          envVars.TELEGRAM_ALLOWED_USERS = allowedUsers;
+        } else {
+          delete envVars.TELEGRAM_ALLOWED_USERS;
+        }
+      }
+
+      this.writeEnvFile(envVars);
+
+      // Restart bot with new settings
+      const token = envVars.TELEGRAM_BOT_TOKEN;
+      const users = envVars.TELEGRAM_ALLOWED_USERS
+        ? envVars.TELEGRAM_ALLOWED_USERS.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+
+      if (token) {
+        this.telegramBot.start(token, users);
+      } else {
+        this.telegramBot.stop();
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, botRunning: this.telegramBot.polling }));
+    } catch (error) {
+      this.sendError(res, 500, 'Failed to update telegram settings: ' + error.message);
+    }
+  }
+
   stop() {
+    this.flushLogs(true); // Sync write before shutdown
+    if (this.telegramBot) this.telegramBot.stop();
     if (this.server) {
       this.server.close();
     }
