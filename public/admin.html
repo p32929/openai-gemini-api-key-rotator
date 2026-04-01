@@ -406,6 +406,7 @@
                                 id="password"
                                 class="input-field w-full px-3 py-2 rounded-md transition-colors"
                                 placeholder="Enter admin password"
+                                autofocus
                             >
                         </div>
                         <button
@@ -1368,8 +1369,9 @@
                 }
             });
 
-            // Display each provider
-            Object.values(providers).forEach((provider, index) => {
+            // Display each provider (disabled providers at the end)
+            const sortedProviders = Object.values(providers).sort((a, b) => (a.disabled ? 1 : 0) - (b.disabled ? 1 : 0));
+            sortedProviders.forEach((provider, index) => {
                 const providerDiv = document.createElement('div');
                 providerDiv.className = 'key-row';
 
@@ -3270,8 +3272,8 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                         // Always overwrite - last entry wins (has status + key info)
                         seenRequests.set(key, log);
                     }
-                    const uniqueLogs = [...seenRequests.values()];
-                    
+                    const uniqueLogs = [...seenRequests.values()].reverse();
+
                     // New JSON format - create formatted display
                     processedLogs = uniqueLogs.map(log => {
                         if (typeof log === 'string') {
@@ -3336,7 +3338,8 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                         }
                     }
                     
-                    // Legacy string format - old processing
+                    // Legacy string format - reverse so latest is first
+                    uniqueLogs.reverse();
                     processedLogs = uniqueLogs.map(log => {
                         const testMatch = log.match(/\[TEST-([a-zA-Z0-9]+)\]/);
                         if (testMatch) {
@@ -3355,9 +3358,9 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 }
                 
                 logsContainer.innerHTML = processedLogs || 'No logs available';
-                
-                // Auto-scroll to bottom
-                logsContainer.scrollTop = logsContainer.scrollHeight;
+
+                // Latest logs are already at top, scroll to top
+                logsContainer.scrollTop = 0;
             } catch (error) {
                 document.getElementById('logsContainer').textContent = 'Failed to load logs: ' + error.message;
             }
