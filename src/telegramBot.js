@@ -1,5 +1,6 @@
 const https = require('https');
 const http = require('http');
+const { Readable } = require('stream');
 
 class TelegramBot {
   constructor(server) {
@@ -289,18 +290,79 @@ class TelegramBot {
   }
 
   async fetchModels(providerName, provider) {
-    const port = this.server.config.getPort();
     const headers = this.buildAuthHeader(provider);
+    const res = await this.internalRequest('GET', `/${providerName}/models`, headers);
+    const parsed = JSON.parse(res.data);
 
-    // Both hit /{provider}/models — the proxy appends to the provider's base URL
-    const data = await this.httpGet(`http://127.0.0.1:${port}/${providerName}/models`, headers);
-    const parsed = JSON.parse(data);
+    if (res.statusCode >= 400) {
+      throw new Error(parsed.error?.message || `HTTP ${res.statusCode}`);
+    }
 
     if (provider.apiType === 'gemini') {
       return (parsed.models || []).map(m => m.name.replace('models/', '')).sort();
     } else {
       return (parsed.data || []).map(m => m.id).sort();
     }
+  }
+
+  /**
+   * Make a request directly through the server's HTTP handler — no network needed.
+   * Goes through the full proxy pipeline (routing, key rotation, logging, access keys).
+   */
+  internalRequest(method, urlPath, headers = {}, body = null) {
+    return new Promise((resolve, reject) => {
+      // Build a minimal IncomingMessage-like readable stream
+      const req = new Readable({ read() {} });
+      req.method = method;
+      req.url = urlPath;
+      req.headers = Object.fromEntries(
+        Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v])
+      );
+      req.connection = { remoteAddress: '127.0.0.1' };
+
+      if (body) req.push(body);
+      req.push(null);
+
+      // Build a minimal ServerResponse-like object that collects the output
+      let statusCode = 200;
+      const resHeaders = {};
+      const chunks = [];
+      let finished = false;
+
+      const res = {
+        setHeader(key, val) { resHeaders[key.toLowerCase()] = val; },
+        writeHead(code, hdrs) {
+          statusCode = code;
+          if (hdrs) {
+            for (const [k, v] of Object.entries(hdrs)) {
+              resHeaders[k.toLowerCase()] = v;
+            }
+          }
+        },
+        write(chunk) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          return true;
+        },
+        end(data) {
+          if (finished) return;
+          finished = true;
+          if (data) chunks.push(Buffer.isBuffer(data) ? data : Buffer.from(data));
+          resolve({
+            statusCode,
+            headers: resHeaders,
+            data: Buffer.concat(chunks).toString('utf8')
+          });
+        },
+        get headersSent() { return false; },
+        on() { return res; }
+      };
+
+      try {
+        this.server.handleRequest(req, res);
+      } catch (err) {
+        reject(err);
+      }
+    });
   }
 
   buildAuthHeader(provider) {
@@ -583,13 +645,12 @@ class TelegramBot {
     const provider = this.server.config.getProvider(providerName);
     if (!provider) throw new Error(`Provider '${providerName}' not found`);
 
-    const port = this.server.config.getPort();
-    const headers = { 'Content-Type': 'application/json', ...this.buildAuthHeader(provider) };
+    const headers = { 'content-type': 'application/json', ...this.buildAuthHeader(provider) };
 
-    let url, body;
+    let reqPath, body;
 
     if (apiType === 'gemini') {
-      url = `http://127.0.0.1:${port}/${providerName}/models/${model}:generateContent`;
+      reqPath = `/${providerName}/models/${model}:generateContent`;
       body = JSON.stringify({
         contents: history.map(m => {
           const parts = [];
@@ -601,7 +662,7 @@ class TelegramBot {
         })
       });
     } else {
-      url = `http://127.0.0.1:${port}/${providerName}/chat/completions`;
+      reqPath = `/${providerName}/chat/completions`;
       body = JSON.stringify({
         model: model,
         messages: history.map(m => {
@@ -619,8 +680,8 @@ class TelegramBot {
       });
     }
 
-    const responseData = await this.httpPost(url, body, headers);
-    const data = JSON.parse(responseData);
+    const res = await this.internalRequest('POST', reqPath, headers, body);
+    const data = JSON.parse(res.data);
 
     if (data.error) {
       throw new Error(data.error.message || data.error.status || JSON.stringify(data.error));

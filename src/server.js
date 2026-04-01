@@ -31,9 +31,8 @@ class ProxyServer {
     this.GeminiClient = require('./geminiClient');
     this.OpenAIClient = require('./openaiClient');
 
-    // Telegram bot
+    // Telegram bot (started after server.listen in start())
     this.telegramBot = new TelegramBot(this);
-    this.initTelegramBot();
   }
 
   start() {
@@ -60,6 +59,9 @@ class ProxyServer {
       if (this.config.hasAdminPassword()) {
         console.log(`Admin panel available at: http://localhost:${this.config.getPort()}/admin`);
       }
+
+      // Start Telegram bot after server is listening
+      this.initTelegramBot();
     });
 
     this.server.on('error', (error) => {
