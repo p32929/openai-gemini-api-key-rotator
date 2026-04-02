@@ -3702,6 +3702,11 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                             <input type="text" id="defaultStatusCodes" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="429" value="429">
                         </div>
                         <p class="text-xs text-muted-foreground">When the API returns any of these status codes, the proxy will rotate to the next API key. This is reflected in all generated cURL commands.</p>
+                        <div class="mt-3">
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Keep-Alive Interval <span class="text-muted-foreground font-normal">(minutes, 0 to disable)</span></label>
+                            <input type="number" id="keepAliveMinutes" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="10" value="10" min="0" step="1">
+                        </div>
+                        <p class="text-xs text-muted-foreground">Pings the server periodically to prevent hosting platforms from shutting it down due to inactivity. Set to 0 to disable.</p>
                     </div>
                 </div>
 
@@ -3781,6 +3786,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             document.getElementById('telegramBotToken').value = data.botToken || '';
             document.getElementById('telegramAllowedUsers').value = data.allowedUsers || '';
             document.getElementById('defaultStatusCodes').value = data.defaultStatusCodes || '429';
+            document.getElementById('keepAliveMinutes').value = data.keepAliveMinutes != null ? data.keepAliveMinutes : 10;
 
             const statusEl = document.getElementById('telegramBotStatus');
             if (data.botRunning) {
@@ -3799,13 +3805,14 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
         const botToken = document.getElementById('telegramBotToken').value.trim();
         const allowedUsers = document.getElementById('telegramAllowedUsers').value.trim();
         const statusCodesInput = document.getElementById('defaultStatusCodes').value.trim() || '429';
+        const keepAliveMinutes = parseInt(document.getElementById('keepAliveMinutes').value) || 0;
         const statusEl = document.getElementById('telegramBotStatus');
 
         try {
             const response = await fetch('/admin/api/telegram', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ botToken, allowedUsers, defaultStatusCodes: statusCodesInput })
+                body: JSON.stringify({ botToken, allowedUsers, defaultStatusCodes: statusCodesInput, keepAliveMinutes })
             });
 
             const data = await response.json();
