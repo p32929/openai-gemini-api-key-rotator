@@ -21,8 +21,8 @@ class TelegramBot {
     this.maxHistory = 50;
   }
 
-  start(token, allowedUsers) {
-    if (this.polling) this.stop();
+  async start(token, allowedUsers) {
+    if (this.polling) await this.stop();
 
     this.token = token;
     this.allowedUsers = new Set(allowedUsers.map(String));
@@ -30,6 +30,13 @@ class TelegramBot {
     if (!this.token) {
       console.log('[TELEGRAM] No bot token configured');
       return;
+    }
+
+    // Flush any lingering getUpdates session from a previous instance
+    try {
+      await this.apiCall('getUpdates', { offset: -1, timeout: 0 });
+    } catch {
+      // Ignore — just clearing the old session
     }
 
     this.polling = true;
@@ -57,11 +64,24 @@ class TelegramBot {
     }
   }
 
-  stop() {
+  async stop() {
     this.polling = false;
     if (this.pollTimeout) {
       clearTimeout(this.pollTimeout);
       this.pollTimeout = null;
+    }
+    // Abort in-flight getUpdates request
+    if (this._activePollingReq) {
+      this._activePollingReq.destroy();
+      this._activePollingReq = null;
+    }
+    // Flush the old polling session so the next start doesn't conflict
+    if (this.token) {
+      try {
+        await this.apiCall('getUpdates', { offset: -1, timeout: 0 });
+      } catch {
+        // Ignore — just clearing
+      }
     }
     console.log('[TELEGRAM] Bot stopped');
   }
@@ -1126,11 +1146,13 @@ class TelegramBot {
 
       // Use longer timeout for getUpdates (long polling uses 30s, give extra buffer)
       const timeoutMs = method === 'getUpdates' ? 60000 : 30000;
+      const isLongPoll = method === 'getUpdates' && payload.timeout > 0;
 
       const req = https.request(options, (res) => {
         let body = '';
         res.on('data', chunk => body += chunk);
         res.on('end', () => {
+          if (isLongPoll) this._activePollingReq = null;
           try {
             const parsed = JSON.parse(body);
             if (parsed.ok) {
@@ -1145,11 +1167,19 @@ class TelegramBot {
       });
 
       req.setTimeout(timeoutMs, () => {
+        if (isLongPoll) this._activePollingReq = null;
         req.destroy();
         reject(new Error('Request timeout'));
       });
 
-      req.on('error', reject);
+      req.on('error', (err) => {
+        if (isLongPoll) this._activePollingReq = null;
+        reject(err);
+      });
+
+      // Track the long-polling request so stop() can abort it
+      if (isLongPoll) this._activePollingReq = req;
+
       req.write(data);
       req.end();
     });

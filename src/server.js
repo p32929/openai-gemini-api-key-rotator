@@ -1486,7 +1486,7 @@ class ProxyServer {
     console.log(`[SERVER] ${this.config.getProviders().size} providers available for dynamic initialization`);
   }
 
-  initTelegramBot() {
+  async initTelegramBot() {
     try {
       const envPath = path.join(process.cwd(), '.env');
       if (!fs.existsSync(envPath)) return;
@@ -1499,7 +1499,7 @@ class ProxyServer {
         : [];
 
       if (token) {
-        this.telegramBot.start(token, allowedUsers);
+        await this.telegramBot.start(token, allowedUsers);
       }
     } catch (err) {
       console.log(`[TELEGRAM] Init error: ${err.message}`);
@@ -1570,9 +1570,9 @@ class ProxyServer {
         : [];
 
       if (token) {
-        this.telegramBot.start(token, users);
+        await this.telegramBot.start(token, users);
       } else {
-        this.telegramBot.stop();
+        await this.telegramBot.stop();
       }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
