@@ -17,6 +17,7 @@ class TelegramBot {
     this.userModels = new Map();       // chatId -> { provider, model, apiType }
     this.userHistory = new Map();      // chatId -> [{ role, content }]
     this.awaitingCustomModel = new Map(); // chatId -> { provider, apiType }
+    this.awaitingModelSearch = new Map(); // chatId -> { provider, apiType, messageId }
     this.maxHistory = 50;
   }
 
@@ -140,6 +141,43 @@ class TelegramBot {
 
     const text = msg.text.trim();
 
+    // Check if user is searching for a model
+    if (this.awaitingModelSearch.has(chatId) && !text.startsWith('/')) {
+      const { provider: providerName, apiType, messageId } = this.awaitingModelSearch.get(chatId);
+      this.awaitingModelSearch.delete(chatId);
+
+      const cached = this._modelCache.get(`${chatId}:${providerName}`);
+      if (cached) {
+        const query = text.toLowerCase();
+        const matched = cached.models.filter(m => m.toLowerCase().includes(query));
+
+        if (matched.length === 0) {
+          await this.sendMessage(chatId, `No models matching "*${text}*" in *${providerName}*.`, { parse_mode: 'Markdown' });
+        } else {
+          // Store filtered results in cache for selection
+          const searchCacheKey = `${chatId}:${providerName}:search`;
+          this._modelCache.set(searchCacheKey, { models: matched, apiType });
+
+          const buttons = [];
+          for (let i = 0; i < matched.length && i < 50; i++) {
+            buttons.push([{ text: matched[i], callback_data: `ms:${providerName}:${i}` }]);
+          }
+          buttons.push([
+            { text: '\ud83d\udd0d Search again', callback_data: `search:${providerName}` },
+            { text: '\u2190 All models', callback_data: `provider:${providerName}` }
+          ]);
+
+          await this.sendMessage(chatId, `Found *${matched.length}* model(s) matching "*${text}*":`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: buttons }
+          });
+        }
+      } else {
+        await this.sendMessage(chatId, 'Model list not cached. Use /models to fetch first.');
+      }
+      return;
+    }
+
     // Check if user is typing a custom model name
     if (this.awaitingCustomModel.has(chatId) && !text.startsWith('/')) {
       const { provider: providerName, apiType } = this.awaitingCustomModel.get(chatId);
@@ -153,8 +191,9 @@ class TelegramBot {
     }
 
     // Any command cancels the awaiting state
-    if (text.startsWith('/') && this.awaitingCustomModel.has(chatId)) {
+    if (text.startsWith('/')) {
       this.awaitingCustomModel.delete(chatId);
+      this.awaitingModelSearch.delete(chatId);
     }
 
     if (text === '/start' || text === '/help') {
@@ -290,7 +329,10 @@ class TelegramBot {
       buttons.push(nav);
     }
 
-    // Custom model + Back buttons
+    // Search, Custom model + Back buttons
+    buttons.push([
+      { text: '\ud83d\udd0d Search models', callback_data: `search:${providerName}` }
+    ]);
     buttons.push([
       { text: '\u270f\ufe0f Type custom model', callback_data: `custom:${providerName}` },
       { text: '\u2190 Back', callback_data: 'back_providers' }
@@ -472,6 +514,30 @@ class TelegramBot {
       if (provider) {
         this.awaitingCustomModel.set(chatId, { provider: providerName, apiType: provider.apiType });
         await this.editMessage(chatId, messageId, `Type the model name for *${providerName}*:`, { parse_mode: 'Markdown' });
+      }
+    } else if (data.startsWith('search:')) {
+      const providerName = data.substring(7);
+      const provider = this.server.config.getProvider(providerName);
+      if (provider) {
+        this.awaitingModelSearch.set(chatId, { provider: providerName, apiType: provider.apiType, messageId });
+        await this.editMessage(chatId, messageId, `Type part of the model name to search in *${providerName}*:`, { parse_mode: 'Markdown' });
+      }
+    } else if (data.startsWith('ms:')) {
+      // ms:providerName:index — model selected from search results
+      const parts = data.split(':');
+      const providerName = parts[1];
+      const modelIndex = parseInt(parts[2]);
+
+      const searchCacheKey = `${chatId}:${providerName}:search`;
+      const cached = this._modelCache.get(searchCacheKey);
+      if (cached && modelIndex < cached.models.length) {
+        const model = cached.models[modelIndex];
+        const apiType = cached.apiType;
+
+        this.userModels.set(chatId, { provider: providerName, model, apiType });
+        this.userHistory.delete(chatId);
+
+        await this.editMessage(chatId, messageId, `Model selected: *${model}*\nProvider: *${providerName}*\n\nYou can now start chatting!`, { parse_mode: 'Markdown' });
       }
     } else if (data === 'back_providers') {
       // Show providers again
