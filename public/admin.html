@@ -3798,14 +3798,14 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
     async function saveTelegramSettings() {
         const botToken = document.getElementById('telegramBotToken').value.trim();
         const allowedUsers = document.getElementById('telegramAllowedUsers').value.trim();
-        const defaultStatusCodes = document.getElementById('defaultStatusCodes').value.trim() || '429';
+        const statusCodesInput = document.getElementById('defaultStatusCodes').value.trim() || '429';
         const statusEl = document.getElementById('telegramBotStatus');
 
         try {
             const response = await fetch('/admin/api/telegram', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ botToken, allowedUsers, defaultStatusCodes })
+                body: JSON.stringify({ botToken, allowedUsers, defaultStatusCodes: statusCodesInput })
             });
 
             const data = await response.json();
