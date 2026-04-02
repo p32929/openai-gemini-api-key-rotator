@@ -795,6 +795,7 @@
 
     <script>
         let envVars = {};
+        let defaultStatusCodes = '429';
 
         // Unified copy to clipboard function that works without SSL
         async function copyToClipboard(text, successMessage) {
@@ -1203,13 +1204,18 @@
         // Environment variables functionality
         async function loadEnvVars() {
             try {
-                const [envResponse, usageResponse] = await Promise.all([
+                const [envResponse, usageResponse, settingsResponse] = await Promise.all([
                     fetch('/admin/api/env'),
-                    fetch('/admin/api/key-usage').catch(() => ({ ok: false }))
+                    fetch('/admin/api/key-usage').catch(() => ({ ok: false })),
+                    fetch('/admin/api/telegram').catch(() => ({ ok: false }))
                 ]);
                 envVars = await envResponse.json();
                 if (usageResponse.ok) {
                     keyUsageData = await usageResponse.json();
+                }
+                if (settingsResponse.ok) {
+                    const settings = await settingsResponse.json();
+                    defaultStatusCodes = settings.defaultStatusCodes || '429';
                 }
                 renderEnvVars();
                 updateProviderPreview();
@@ -2208,7 +2214,7 @@
 
             if (apiType === 'openai') {
                 // Build Authorization header for OpenAI
-                let authContent = '[STATUS_CODES:429]';
+                let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
                 if (accessKey) {
                     authContent += `[ACCESS_KEY:${accessKey}]`;
                 }
@@ -2231,7 +2237,7 @@ ${authHeader}  -H "Content-Type: application/json" \\
   }'`;
             } else if (apiType === 'gemini') {
                 // Build x-goog-api-key header for Gemini
-                let authContent = '[STATUS_CODES:429]';
+                let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
                 if (accessKey) {
                     authContent += `[ACCESS_KEY:${accessKey}]`;
                 }
@@ -3682,6 +3688,25 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 </button>
             </div>
             <div class="p-4 space-y-5 max-h-[70vh] overflow-y-auto">
+                <!-- Default Status Codes Section -->
+                <div>
+                    <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Key Rotation
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Default Status Codes to Rotate <span class="text-muted-foreground font-normal">(comma-separated)</span></label>
+                            <input type="text" id="defaultStatusCodes" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="429" value="429">
+                        </div>
+                        <p class="text-xs text-muted-foreground">When the API returns any of these status codes, the proxy will rotate to the next API key. This is reflected in all generated cURL commands.</p>
+                    </div>
+                </div>
+
+                <hr class="border-border">
+
                 <!-- Telegram Bot Section -->
                 <div>
                     <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -3755,6 +3780,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
 
             document.getElementById('telegramBotToken').value = data.botToken || '';
             document.getElementById('telegramAllowedUsers').value = data.allowedUsers || '';
+            document.getElementById('defaultStatusCodes').value = data.defaultStatusCodes || '429';
 
             const statusEl = document.getElementById('telegramBotStatus');
             if (data.botRunning) {
@@ -3772,23 +3798,27 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
     async function saveTelegramSettings() {
         const botToken = document.getElementById('telegramBotToken').value.trim();
         const allowedUsers = document.getElementById('telegramAllowedUsers').value.trim();
+        const defaultStatusCodes = document.getElementById('defaultStatusCodes').value.trim() || '429';
         const statusEl = document.getElementById('telegramBotStatus');
 
         try {
             const response = await fetch('/admin/api/telegram', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ botToken, allowedUsers })
+                body: JSON.stringify({ botToken, allowedUsers, defaultStatusCodes })
             });
 
             const data = await response.json();
             if (data.success) {
+                // Update global status codes for curl generation (use server-sorted value)
+                defaultStatusCodes = data.defaultStatusCodes || '429';
+                document.getElementById('defaultStatusCodes').value = defaultStatusCodes;
                 if (data.botRunning) {
                     statusEl.innerHTML = '<span class="text-green-500 font-medium">Settings saved - Bot is running</span>';
                 } else {
                     statusEl.innerHTML = '<span class="text-muted-foreground">Settings saved - Bot stopped (no token)</span>';
                 }
-                showSuccessToast('Telegram settings saved');
+                showSuccessToast('Settings saved');
             } else {
                 statusEl.innerHTML = '<span class="text-red-500 font-medium">Failed to save</span>';
             }

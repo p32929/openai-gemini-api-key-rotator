@@ -10,6 +10,8 @@ class TelegramBot {
     this.polling = false;
     this.lastUpdateId = 0;
     this.pollTimeout = null;
+    this.consecutiveErrors = 0;
+    this.maxBackoff = 30000; // Max 30s between retries
 
     // Per-user state
     this.userModels = new Map();       // chatId -> { provider, model, apiType }
@@ -31,6 +33,7 @@ class TelegramBot {
 
     this.polling = true;
     this.lastUpdateId = 0;
+    this.consecutiveErrors = 0;
     console.log(`[TELEGRAM] Bot starting with ${this.allowedUsers.size} allowed user(s)`);
     this.registerCommands();
     this.poll();
@@ -72,6 +75,9 @@ class TelegramBot {
         allowed_updates: ['message', 'callback_query']
       });
 
+      // Success — reset error counter
+      this.consecutiveErrors = 0;
+
       if (updates && updates.length > 0) {
         for (const update of updates) {
           this.lastUpdateId = update.update_id;
@@ -83,7 +89,14 @@ class TelegramBot {
         }
       }
     } catch (err) {
-      console.log(`[TELEGRAM] Polling error: ${err.message}`);
+      this.consecutiveErrors++;
+      const backoff = Math.min(1000 * Math.pow(2, this.consecutiveErrors - 1), this.maxBackoff);
+      console.log(`[TELEGRAM] Polling error (attempt ${this.consecutiveErrors}, retry in ${backoff}ms): ${err.message}`);
+
+      if (this.polling) {
+        this.pollTimeout = setTimeout(() => this.poll(), backoff);
+      }
+      return;
     }
 
     if (this.polling) {
@@ -991,8 +1004,8 @@ class TelegramBot {
         }
       };
 
-      // Use longer timeout for getUpdates (long polling)
-      const timeoutMs = method === 'getUpdates' ? 35000 : 15000;
+      // Use longer timeout for getUpdates (long polling uses 30s, give extra buffer)
+      const timeoutMs = method === 'getUpdates' ? 60000 : 30000;
 
       const req = https.request(options, (res) => {
         let body = '';

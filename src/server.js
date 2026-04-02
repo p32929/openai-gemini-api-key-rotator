@@ -892,9 +892,9 @@ class ProxyServer {
         finalEnvVars.ADMIN_PASSWORD = currentEnvVars.ADMIN_PASSWORD;
       }
 
-      // Preserve _DISABLED and TELEGRAM_ entries from current env if not in new vars
+      // Preserve _DISABLED, TELEGRAM_, and DEFAULT_STATUS_CODES entries from current env if not in new vars
       for (const [key, value] of Object.entries(currentEnvVars)) {
-        if ((key.endsWith('_DISABLED') || key.startsWith('TELEGRAM_')) && !(key in finalEnvVars)) {
+        if ((key.endsWith('_DISABLED') || key.startsWith('TELEGRAM_') || key === 'DEFAULT_STATUS_CODES') && !(key in finalEnvVars)) {
           finalEnvVars[key] = value;
         }
       }
@@ -1516,6 +1516,7 @@ class ProxyServer {
       res.end(JSON.stringify({
         botToken: envVars.TELEGRAM_BOT_TOKEN || '',
         allowedUsers: envVars.TELEGRAM_ALLOWED_USERS || '',
+        defaultStatusCodes: envVars.DEFAULT_STATUS_CODES || '429',
         botRunning: this.telegramBot.polling
       }));
     } catch (error) {
@@ -1525,7 +1526,7 @@ class ProxyServer {
 
   async handleUpdateTelegramSettings(res, body) {
     try {
-      const { botToken, allowedUsers } = JSON.parse(body);
+      const { botToken, allowedUsers, defaultStatusCodes } = JSON.parse(body);
       const envPath = path.join(process.cwd(), '.env');
       const envContent = fs.readFileSync(envPath, 'utf8');
       const envVars = this.config.parseEnvFile(envContent);
@@ -1544,6 +1545,21 @@ class ProxyServer {
           delete envVars.TELEGRAM_ALLOWED_USERS;
         }
       }
+      if (defaultStatusCodes !== undefined) {
+        // Parse, deduplicate, sort numerically
+        const codes = defaultStatusCodes
+          .split(',')
+          .map(s => s.trim())
+          .filter(s => /^\d+$/.test(s))
+          .map(Number)
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .sort((a, b) => a - b);
+        if (codes.length > 0) {
+          envVars.DEFAULT_STATUS_CODES = codes.join(',');
+        } else {
+          delete envVars.DEFAULT_STATUS_CODES;
+        }
+      }
 
       this.writeEnvFile(envVars);
 
@@ -1560,7 +1576,11 @@ class ProxyServer {
       }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, botRunning: this.telegramBot.polling }));
+      res.end(JSON.stringify({
+        success: true,
+        botRunning: this.telegramBot.polling,
+        defaultStatusCodes: envVars.DEFAULT_STATUS_CODES || '429'
+      }));
     } catch (error) {
       this.sendError(res, 500, 'Failed to update telegram settings: ' + error.message);
     }
