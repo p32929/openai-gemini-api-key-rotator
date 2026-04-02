@@ -380,15 +380,36 @@ class TelegramBot {
 
   buildAuthHeader(provider) {
     const headers = {};
+
+    // Read default status codes from env
+    const statusCodes = this.getDefaultStatusCodes();
+    let authContent = `[STATUS_CODES:${statusCodes}]`;
+
     if (provider.accessKey) {
-      // Embed access key in the auth header so the proxy validates it
-      if (provider.apiType === 'gemini') {
-        headers['x-goog-api-key'] = `[ACCESS_KEY:${provider.accessKey}]`;
-      } else {
-        headers['authorization'] = `Bearer [ACCESS_KEY:${provider.accessKey}]`;
-      }
+      authContent += `[ACCESS_KEY:${provider.accessKey}]`;
     }
+
+    if (provider.apiType === 'gemini') {
+      headers['x-goog-api-key'] = authContent;
+    } else {
+      headers['authorization'] = `Bearer ${authContent}`;
+    }
+
     return headers;
+  }
+
+  getDefaultStatusCodes() {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const envPath = path.join(process.cwd(), '.env');
+      if (!fs.existsSync(envPath)) return '429';
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = this.server.config.parseEnvFile(envContent);
+      return envVars.DEFAULT_STATUS_CODES || '429';
+    } catch {
+      return '429';
+    }
   }
 
   // Store models cache for pagination
@@ -528,7 +549,33 @@ class TelegramBot {
         history.shift();
       }
 
-      const reply = await this.chatWithModel(selection, history);
+      const result = await this.chatWithModel(selection, history);
+      const statusTag = `\`[${result.statusCode}]\``;
+
+      if (result.multimodal) {
+        if (thinkingMsg) this.deleteMessage(chatId, thinkingMsg.message_id).catch(() => {});
+        const textParts = [];
+        for (const part of result.parts) {
+          if (part.type === 'image') {
+            await this.sendPhoto(chatId, part.url, statusTag);
+          } else if (part.type === 'text') {
+            textParts.push(part.text);
+          }
+        }
+        const textReply = textParts.join('\n');
+        if (textReply) {
+          const withStatus = `${textReply}\n\n${statusTag}`;
+          await this.sendMessage(chatId, withStatus, { parse_mode: 'Markdown' }).catch(async () => {
+            await this.sendMessage(chatId, withStatus);
+          });
+        }
+        history.push({ role: 'assistant', content: textReply || '[image]' });
+        while (history.length > this.maxHistory) history.shift();
+        return;
+      }
+
+      const reply = result.text;
+      const replyWithStatus = `${reply}\n\n${statusTag}`;
 
       history.push({ role: 'assistant', content: reply });
       while (history.length > this.maxHistory) {
@@ -536,19 +583,19 @@ class TelegramBot {
       }
 
       // Replace thinking message with actual reply
-      if (thinkingMsg && reply.length <= 4096) {
+      if (thinkingMsg && replyWithStatus.length <= 4096) {
         try {
-          await this.editMessage(chatId, thinkingMsg.message_id, reply, { parse_mode: 'Markdown' });
+          await this.editMessage(chatId, thinkingMsg.message_id, replyWithStatus, { parse_mode: 'Markdown' });
         } catch {
           try {
-            await this.editMessage(chatId, thinkingMsg.message_id, reply);
+            await this.editMessage(chatId, thinkingMsg.message_id, replyWithStatus);
           } catch {
-            await this.sendMessage(chatId, reply);
+            await this.sendMessage(chatId, replyWithStatus);
           }
         }
       } else {
         if (thinkingMsg) this.deleteMessage(chatId, thinkingMsg.message_id).catch(() => {});
-        const chunks = this.splitMessage(reply, 4096);
+        const chunks = this.splitMessage(replyWithStatus, 4096);
         for (const chunk of chunks) {
           await this.sendMessage(chatId, chunk, { parse_mode: 'Markdown' }).catch(async () => {
             await this.sendMessage(chatId, chunk);
@@ -589,24 +636,26 @@ class TelegramBot {
     const thinkingMsg = await this.sendMessage(chatId, '\u2728 _Generating..._', { parse_mode: 'Markdown' });
 
     try {
-      const reply = await this.chatWithModel(selection, history);
+      const result = await this.chatWithModel(selection, history);
+      const statusTag = `\`[${result.statusCode}]\``;
 
       // Handle multimodal response (images)
-      if (reply && typeof reply === 'object' && reply.multimodal) {
+      if (result.multimodal) {
         if (thinkingMsg) this.deleteMessage(chatId, thinkingMsg.message_id).catch(() => {});
 
         const textParts = [];
-        for (const part of reply.parts) {
+        for (const part of result.parts) {
           if (part.type === 'image') {
-            await this.sendPhoto(chatId, part.url);
+            await this.sendPhoto(chatId, part.url, statusTag);
           } else if (part.type === 'text') {
             textParts.push(part.text);
           }
         }
         const textReply = textParts.join('\n');
         if (textReply) {
-          await this.sendMessage(chatId, textReply, { parse_mode: 'Markdown' }).catch(async () => {
-            await this.sendMessage(chatId, textReply);
+          const withStatus = `${textReply}\n\n${statusTag}`;
+          await this.sendMessage(chatId, withStatus, { parse_mode: 'Markdown' }).catch(async () => {
+            await this.sendMessage(chatId, withStatus);
           });
         }
 
@@ -615,27 +664,30 @@ class TelegramBot {
         return;
       }
 
+      const reply = result.text;
+      const replyWithStatus = `${reply}\n\n${statusTag}`;
+
       history.push({ role: 'assistant', content: reply });
       while (history.length > this.maxHistory) {
         history.shift();
       }
 
       // Replace thinking message with actual reply
-      if (thinkingMsg && reply.length <= 4096) {
+      if (thinkingMsg && replyWithStatus.length <= 4096) {
         try {
-          await this.editMessage(chatId, thinkingMsg.message_id, reply, { parse_mode: 'Markdown' });
+          await this.editMessage(chatId, thinkingMsg.message_id, replyWithStatus, { parse_mode: 'Markdown' });
         } catch {
           // Markdown parse failure — try plain text edit, fallback to new message
           try {
-            await this.editMessage(chatId, thinkingMsg.message_id, reply);
+            await this.editMessage(chatId, thinkingMsg.message_id, replyWithStatus);
           } catch {
-            await this.sendMessage(chatId, reply);
+            await this.sendMessage(chatId, replyWithStatus);
           }
         }
       } else {
         // Delete thinking message and send chunks
         if (thinkingMsg) this.deleteMessage(chatId, thinkingMsg.message_id).catch(() => {});
-        const chunks = this.splitMessage(reply, 4096);
+        const chunks = this.splitMessage(replyWithStatus, 4096);
         for (const chunk of chunks) {
           await this.sendMessage(chatId, chunk, { parse_mode: 'Markdown' }).catch(async () => {
             await this.sendMessage(chatId, chunk);
@@ -694,19 +746,21 @@ class TelegramBot {
     }
 
     const res = await this.internalRequest('POST', reqPath, headers, body);
+    const statusCode = res.statusCode;
     const data = JSON.parse(res.data);
 
     if (data.error) {
-      throw new Error(data.error.message || data.error.status || JSON.stringify(data.error));
+      const errMsg = data.error.message || data.error.status || JSON.stringify(data.error);
+      throw new Error(`(${statusCode}) ${errMsg}`);
     }
 
     if (apiType === 'gemini') {
       const parts = data.candidates?.[0]?.content?.parts;
-      if (!parts || parts.length === 0) throw new Error('Empty response from Gemini');
-      return parts.map(p => p.text).join('');
+      if (!parts || parts.length === 0) throw new Error(`(${statusCode}) Empty response from Gemini`);
+      return { text: parts.map(p => p.text).join(''), statusCode };
     } else {
       const message = data.choices?.[0]?.message;
-      if (!message) throw new Error('Empty response from model');
+      if (!message) throw new Error(`(${statusCode}) Empty response from model`);
 
       const content = message.content;
       const parts = [];
@@ -731,18 +785,18 @@ class TelegramBot {
         }
       }
 
-      if (parts.length > 0) return { multimodal: true, parts };
+      if (parts.length > 0) return { multimodal: true, parts, statusCode };
 
       if (typeof content === 'string' && content) {
         // Check for image URLs in markdown format ![alt](url)
         const imgMarkdown = content.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
         if (imgMarkdown) {
-          return { multimodal: true, parts: [{ type: 'image', url: imgMarkdown[1] }] };
+          return { multimodal: true, parts: [{ type: 'image', url: imgMarkdown[1] }], statusCode };
         }
-        return content;
+        return { text: content, statusCode };
       }
 
-      throw new Error('Empty response from model');
+      throw new Error(`(${statusCode}) Empty response from model`);
     }
   }
 
