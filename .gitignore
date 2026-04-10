@@ -3,3 +3,4 @@
 /.claude
 *.log
 /.serena
+logs.jsonl

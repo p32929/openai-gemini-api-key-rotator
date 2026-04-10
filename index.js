@@ -47,4 +47,5 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { Config, KeyRotator, GeminiClient, OpenAIClient, ProxyServer };
+const TelegramBot = require('./src/telegramBot');
+module.exports = { Config, KeyRotator, GeminiClient, OpenAIClient, ProxyServer, TelegramBot };

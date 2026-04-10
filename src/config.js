@@ -26,32 +26,32 @@ class Config {
     const envContent = fs.readFileSync(envPath, 'utf8');
     const envVars = this.parseEnvFile(envContent);
 
-    // Check required fields FIRST
+    // Resolve port: .env takes priority, then process.env, then fail
+    const port = envVars.PORT || process.env.PORT;
+    const adminPassword = envVars.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+
     const missingFields = [];
-
-    if (!envVars.PORT) {
-      missingFields.push('PORT');
-    }
-
-    if (!envVars.ADMIN_PASSWORD) {
-      missingFields.push('ADMIN_PASSWORD');
-    }
+    if (!port) missingFields.push('PORT');
+    if (!adminPassword) missingFields.push('ADMIN_PASSWORD');
 
     if (missingFields.length > 0) {
-      console.error('\n❌ ERROR: Required fields missing in .env file!');
+      console.error('\n❌ ERROR: Required fields missing!');
       console.error(`Missing fields: ${missingFields.join(', ')}`);
-      console.error('\nBoth PORT and ADMIN_PASSWORD are required to run the server.');
-      console.error('Example configuration:');
+      console.error('\nBoth PORT and ADMIN_PASSWORD are required (via .env file or environment variables).');
+      console.error('Example .env configuration:');
       console.error('  PORT=8990');
-      console.error('  ADMIN_PASSWORD=your-secure-password\n');
+      console.error('  ADMIN_PASSWORD=your-secure-password');
+      console.error('\nOr pass via environment:');
+      console.error('  PORT=8990 ADMIN_PASSWORD=secret node index.js\n');
       throw new Error(`Required fields missing: ${missingFields.join(', ')}`);
     }
 
     // Set required fields
-    this.port = parseInt(envVars.PORT);
-    this.adminPassword = envVars.ADMIN_PASSWORD;
+    this.port = parseInt(port);
+    this.adminPassword = adminPassword;
 
-    console.log(`[CONFIG] Port: ${this.port}`);
+    const portSource = envVars.PORT ? '.env' : 'environment';
+    console.log(`[CONFIG] Port: ${this.port} (from ${portSource})`);
     console.log(`[CONFIG] Admin panel enabled with password authentication`);
 
     // Clear existing providers

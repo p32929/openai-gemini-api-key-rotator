@@ -455,6 +455,13 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
+                        <!-- Settings Button -->
+                        <button onclick="openSettingsModal()" class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Settings">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
                         <!-- Dark Mode Toggle -->
                         <div class="flex items-center space-x-1.5">
                             <svg class="w-3 h-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -788,6 +795,7 @@
 
     <script>
         let envVars = {};
+        let defaultStatusCodes = '429';
 
         // Unified copy to clipboard function that works without SSL
         async function copyToClipboard(text, successMessage) {
@@ -1196,13 +1204,18 @@
         // Environment variables functionality
         async function loadEnvVars() {
             try {
-                const [envResponse, usageResponse] = await Promise.all([
+                const [envResponse, usageResponse, settingsResponse] = await Promise.all([
                     fetch('/admin/api/env'),
-                    fetch('/admin/api/key-usage').catch(() => ({ ok: false }))
+                    fetch('/admin/api/key-usage').catch(() => ({ ok: false })),
+                    fetch('/admin/api/telegram').catch(() => ({ ok: false }))
                 ]);
                 envVars = await envResponse.json();
                 if (usageResponse.ok) {
                     keyUsageData = await usageResponse.json();
+                }
+                if (settingsResponse.ok) {
+                    const settings = await settingsResponse.json();
+                    defaultStatusCodes = settings.defaultStatusCodes || '429';
                 }
                 renderEnvVars();
                 updateProviderPreview();
@@ -1450,13 +1463,26 @@
                                     </svg>
                                     Rename
                                 </button>
-                                <button
-                                    onclick="copyProviderCurl('${provider.apiType}', '${provider.name}')"
-                                    class="btn btn-secondary px-2 py-1 text-xs font-medium"
-                                    title="Copy cURL test command"
-                                >
-                                    Copy cURL
-                                </button>
+                                <div class="relative inline-flex" id="curlBtnWrap_${provider.apiType}_${provider.name}">
+                                    <button
+                                        onclick="copyProviderCurl('${provider.apiType}', '${provider.name}', 'completions')"
+                                        class="btn btn-secondary px-2 py-1 text-xs font-medium rounded-r-none border-r-0"
+                                        title="Copy /completions cURL command"
+                                    >Copy cURL</button>
+                                    <button
+                                        onclick="toggleCurlDropdown('${provider.apiType}', '${provider.name}', event)"
+                                        class="btn btn-secondary px-1.5 py-1 text-xs font-medium rounded-l-none"
+                                        title="More cURL options"
+                                    >▾</button>
+                                    <div id="curlDropdown_${provider.apiType}_${provider.name}" class="hidden absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg min-w-max">
+                                        <button onclick="copyProviderCurl('${provider.apiType}', '${provider.name}', 'completions'); closeCurlDropdown('${provider.apiType}', '${provider.name}')" class="block w-full text-left px-3 py-2 text-xs hover:bg-accent text-foreground">
+                                            Copy /completions cURL
+                                        </button>
+                                        <button onclick="copyProviderCurl('${provider.apiType}', '${provider.name}', 'models'); closeCurlDropdown('${provider.apiType}', '${provider.name}')" class="block w-full text-left px-3 py-2 text-xs hover:bg-accent text-foreground">
+                                            Copy /models cURL
+                                        </button>
+                                    </div>
+                                </div>
                                 <button
                                     onclick="showDeleteProviderConfirmation('${provider.apiType}', '${provider.name}')"
                                     class="text-destructive hover:text-destructive/80 transition-colors p-1"
@@ -2188,8 +2214,30 @@
             await copyToClipboard(baseUrl, `Base URL copied: ${baseUrl}`);
         }
 
+        // Toggle the curl dropdown menu for a provider
+        function toggleCurlDropdown(apiType, providerName, event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById(`curlDropdown_${apiType}_${providerName}`);
+            // Close all other open curl dropdowns first
+            document.querySelectorAll('[id^="curlDropdown_"]').forEach(el => {
+                if (el.id !== dropdown.id) el.classList.add('hidden');
+            });
+            dropdown.classList.toggle('hidden');
+        }
+
+        function closeCurlDropdown(apiType, providerName) {
+            const dropdown = document.getElementById(`curlDropdown_${apiType}_${providerName}`);
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        // Close curl dropdowns when clicking outside
+        document.addEventListener('click', () => {
+            document.querySelectorAll('[id^="curlDropdown_"]').forEach(el => el.classList.add('hidden'));
+        });
+
         // Generate and copy cURL command for testing a provider
-        async function copyProviderCurl(apiType, providerName) {
+        // endpointType: 'completions' (default) or 'models'
+        async function copyProviderCurl(apiType, providerName, endpointType = 'completions') {
             const baseUrl = `${window.location.protocol}//${window.location.host}`;
             const accessKeyVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_ACCESS_KEY`;
             const accessKey = envVars[accessKeyVar];
@@ -2197,11 +2245,27 @@
             const defaultModel = envVars[defaultModelVar];
             let curlCommand = '';
 
-            // Build auth headers based on API type
+            if (endpointType === 'models') {
+                // /models endpoint is the same for both OpenAI and Gemini compatible APIs
+                let authHeader = '';
+                if (apiType === 'gemini') {
+                    let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
+                    if (accessKey) authContent += `[ACCESS_KEY:${accessKey}]`;
+                    authHeader = `  -H "x-goog-api-key: ${authContent}"`;
+                } else {
+                    let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
+                    if (accessKey) authContent += `[ACCESS_KEY:${accessKey}]`;
+                    authHeader = `  -H "Authorization: Bearer ${authContent}"`;
+                }
+                curlCommand = `curl -X GET "${baseUrl}/${providerName}/models" \\\n${authHeader}`;
+                await copyToClipboard(curlCommand, `📋 /models cURL copied for '${providerName}'!`);
+                return;
+            }
 
+            // Build auth headers based on API type
             if (apiType === 'openai') {
                 // Build Authorization header for OpenAI
-                let authContent = '[STATUS_CODES:429]';
+                let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
                 if (accessKey) {
                     authContent += `[ACCESS_KEY:${accessKey}]`;
                 }
@@ -2224,7 +2288,7 @@ ${authHeader}  -H "Content-Type: application/json" \\
   }'`;
             } else if (apiType === 'gemini') {
                 // Build x-goog-api-key header for Gemini
-                let authContent = '[STATUS_CODES:429]';
+                let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
                 if (accessKey) {
                     authContent += `[ACCESS_KEY:${accessKey}]`;
                 }
@@ -2251,7 +2315,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 showErrorToast('Unknown API type for cURL generation');
                 return;
             }
-            
+
             await copyToClipboard(curlCommand, `📋 cURL command copied for provider '${providerName}'! Ready to test in terminal.`);
         }
 
@@ -3661,5 +3725,165 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
             checkAuth();
         });
     </script>
+<!-- Settings Modal -->
+<div id="settingsModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeSettingsModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-card border border-border rounded-lg shadow-xl w-full max-w-lg relative">
+            <div class="flex items-center justify-between p-4 border-b border-border">
+                <h3 class="text-lg font-semibold text-foreground">Settings</h3>
+                <button onclick="closeSettingsModal()" class="text-muted-foreground hover:text-foreground p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4 space-y-5 max-h-[70vh] overflow-y-auto">
+                <!-- Default Status Codes Section -->
+                <div>
+                    <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Key Rotation
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Default Status Codes to Rotate <span class="text-muted-foreground font-normal">(comma-separated)</span></label>
+                            <input type="text" id="defaultStatusCodes" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="429" value="429">
+                        </div>
+                        <p class="text-xs text-muted-foreground">When the API returns any of these status codes, the proxy will rotate to the next API key. This is reflected in all generated cURL commands.</p>
+                        <div class="mt-3">
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Keep-Alive Interval <span class="text-muted-foreground font-normal">(minutes, 0 to disable)</span></label>
+                            <input type="number" id="keepAliveMinutes" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="10" value="10" min="0" step="1">
+                        </div>
+                        <p class="text-xs text-muted-foreground">Pings the server periodically to prevent hosting platforms from shutting it down due to inactivity. Set to 0 to disable.</p>
+                    </div>
+                </div>
+
+                <hr class="border-border">
+
+                <!-- Telegram Bot Section -->
+                <div>
+                    <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                        </svg>
+                        Telegram Bot
+                    </h4>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Bot Token</label>
+                            <input type="password" id="telegramBotToken" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="123456789:ABCdefGhIjKlMnOpQrStUvWxYz">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">Allowed User IDs <span class="text-muted-foreground font-normal">(comma-separated, leave empty to allow all)</span></label>
+                            <input type="text" id="telegramAllowedUsers" class="input-field w-full px-3 py-2 rounded-md text-sm" placeholder="123456789, 987654321">
+                        </div>
+                        <div id="telegramBotStatus" class="text-xs"></div>
+
+                        <button onclick="saveTelegramSettings()" class="btn btn-primary w-full py-2 text-sm font-medium">Save Telegram Settings</button>
+
+                        <div class="border border-border rounded-md p-3 bg-muted/30">
+                            <p class="text-xs font-medium text-foreground mb-2">How to set up:</p>
+                            <ol class="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
+                                <li>Open Telegram and search for <strong>@BotFather</strong></li>
+                                <li>Send <code class="bg-muted px-1 rounded">/newbot</code> and follow the prompts</li>
+                                <li>Copy the bot token and paste it above</li>
+                                <li>To get your User ID, search for <strong>@userinfobot</strong> on Telegram and send it any message</li>
+                                <li>Add your User ID to the allowed list (or leave empty to allow anyone)</li>
+                            </ol>
+                            <div class="mt-2 pt-2 border-t border-border">
+                                <p class="text-xs font-medium text-foreground mb-1">Bot commands:</p>
+                                <div class="text-xs text-muted-foreground space-y-0.5">
+                                    <p><code class="bg-muted px-1 rounded">/models</code> - Select provider & model</p>
+                                    <p><code class="bg-muted px-1 rounded">/clear</code> - Clear conversation history</p>
+                                    <p><code class="bg-muted px-1 rounded">/logs</code> - View recent API logs</p>
+                                    <p><code class="bg-muted px-1 rounded">/status</code> - Show current model info</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openSettingsModal() {
+        document.getElementById('settingsModal').classList.remove('hidden');
+        loadTelegramSettings();
+    }
+
+    function closeSettingsModal() {
+        document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !document.getElementById('settingsModal').classList.contains('hidden')) {
+            closeSettingsModal();
+        }
+    });
+
+    async function loadTelegramSettings() {
+        try {
+            const response = await fetch('/admin/api/telegram');
+            if (!response.ok) return;
+            const data = await response.json();
+
+            document.getElementById('telegramBotToken').value = data.botToken || '';
+            document.getElementById('telegramAllowedUsers').value = data.allowedUsers || '';
+            document.getElementById('defaultStatusCodes').value = data.defaultStatusCodes || '429';
+            document.getElementById('keepAliveMinutes').value = data.keepAliveMinutes != null ? data.keepAliveMinutes : 10;
+
+            const statusEl = document.getElementById('telegramBotStatus');
+            if (data.botRunning) {
+                statusEl.innerHTML = '<span class="text-green-500 font-medium">Bot is running</span>';
+            } else if (data.botToken) {
+                statusEl.innerHTML = '<span class="text-yellow-500 font-medium">Bot token set but not running</span>';
+            } else {
+                statusEl.innerHTML = '<span class="text-muted-foreground">Bot not configured</span>';
+            }
+        } catch (err) {
+            console.error('Failed to load telegram settings:', err);
+        }
+    }
+
+    async function saveTelegramSettings() {
+        const botToken = document.getElementById('telegramBotToken').value.trim();
+        const allowedUsers = document.getElementById('telegramAllowedUsers').value.trim();
+        const statusCodesInput = document.getElementById('defaultStatusCodes').value.trim() || '429';
+        const keepAliveMinutes = parseInt(document.getElementById('keepAliveMinutes').value) || 0;
+        const statusEl = document.getElementById('telegramBotStatus');
+
+        try {
+            const response = await fetch('/admin/api/telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ botToken, allowedUsers, defaultStatusCodes: statusCodesInput, keepAliveMinutes })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                // Update global status codes for curl generation (use server-sorted value)
+                defaultStatusCodes = data.defaultStatusCodes || '429';
+                document.getElementById('defaultStatusCodes').value = defaultStatusCodes;
+                if (data.botRunning) {
+                    statusEl.innerHTML = '<span class="text-green-500 font-medium">Settings saved - Bot is running</span>';
+                } else {
+                    statusEl.innerHTML = '<span class="text-muted-foreground">Settings saved - Bot stopped (no token)</span>';
+                }
+                showSuccessToast('Settings saved');
+            } else {
+                statusEl.innerHTML = '<span class="text-red-500 font-medium">Failed to save</span>';
+            }
+        } catch (err) {
+            statusEl.innerHTML = '<span class="text-red-500 font-medium">Error: ' + err.message + '</span>';
+        }
+    }
+</script>
 </body>
 </html>
