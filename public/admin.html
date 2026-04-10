@@ -1463,13 +1463,26 @@
                                     </svg>
                                     Rename
                                 </button>
-                                <button
-                                    onclick="copyProviderCurl('${provider.apiType}', '${provider.name}')"
-                                    class="btn btn-secondary px-2 py-1 text-xs font-medium"
-                                    title="Copy cURL test command"
-                                >
-                                    Copy cURL
-                                </button>
+                                <div class="relative inline-flex" id="curlBtnWrap_${provider.apiType}_${provider.name}">
+                                    <button
+                                        onclick="copyProviderCurl('${provider.apiType}', '${provider.name}', 'completions')"
+                                        class="btn btn-secondary px-2 py-1 text-xs font-medium rounded-r-none border-r-0"
+                                        title="Copy /completions cURL command"
+                                    >Copy cURL</button>
+                                    <button
+                                        onclick="toggleCurlDropdown('${provider.apiType}', '${provider.name}', event)"
+                                        class="btn btn-secondary px-1.5 py-1 text-xs font-medium rounded-l-none"
+                                        title="More cURL options"
+                                    >▾</button>
+                                    <div id="curlDropdown_${provider.apiType}_${provider.name}" class="hidden absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg min-w-max">
+                                        <button onclick="copyProviderCurl('${provider.apiType}', '${provider.name}', 'completions'); closeCurlDropdown('${provider.apiType}', '${provider.name}')" class="block w-full text-left px-3 py-2 text-xs hover:bg-accent text-foreground">
+                                            Copy /completions cURL
+                                        </button>
+                                        <button onclick="copyProviderCurl('${provider.apiType}', '${provider.name}', 'models'); closeCurlDropdown('${provider.apiType}', '${provider.name}')" class="block w-full text-left px-3 py-2 text-xs hover:bg-accent text-foreground">
+                                            Copy /models cURL
+                                        </button>
+                                    </div>
+                                </div>
                                 <button
                                     onclick="showDeleteProviderConfirmation('${provider.apiType}', '${provider.name}')"
                                     class="text-destructive hover:text-destructive/80 transition-colors p-1"
@@ -2201,8 +2214,30 @@
             await copyToClipboard(baseUrl, `Base URL copied: ${baseUrl}`);
         }
 
+        // Toggle the curl dropdown menu for a provider
+        function toggleCurlDropdown(apiType, providerName, event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById(`curlDropdown_${apiType}_${providerName}`);
+            // Close all other open curl dropdowns first
+            document.querySelectorAll('[id^="curlDropdown_"]').forEach(el => {
+                if (el.id !== dropdown.id) el.classList.add('hidden');
+            });
+            dropdown.classList.toggle('hidden');
+        }
+
+        function closeCurlDropdown(apiType, providerName) {
+            const dropdown = document.getElementById(`curlDropdown_${apiType}_${providerName}`);
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        // Close curl dropdowns when clicking outside
+        document.addEventListener('click', () => {
+            document.querySelectorAll('[id^="curlDropdown_"]').forEach(el => el.classList.add('hidden'));
+        });
+
         // Generate and copy cURL command for testing a provider
-        async function copyProviderCurl(apiType, providerName) {
+        // endpointType: 'completions' (default) or 'models'
+        async function copyProviderCurl(apiType, providerName, endpointType = 'completions') {
             const baseUrl = `${window.location.protocol}//${window.location.host}`;
             const accessKeyVar = `${apiType.toUpperCase()}_${providerName.toUpperCase()}_ACCESS_KEY`;
             const accessKey = envVars[accessKeyVar];
@@ -2210,8 +2245,24 @@
             const defaultModel = envVars[defaultModelVar];
             let curlCommand = '';
 
-            // Build auth headers based on API type
+            if (endpointType === 'models') {
+                // /models endpoint is the same for both OpenAI and Gemini compatible APIs
+                let authHeader = '';
+                if (apiType === 'gemini') {
+                    let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
+                    if (accessKey) authContent += `[ACCESS_KEY:${accessKey}]`;
+                    authHeader = `  -H "x-goog-api-key: ${authContent}"`;
+                } else {
+                    let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
+                    if (accessKey) authContent += `[ACCESS_KEY:${accessKey}]`;
+                    authHeader = `  -H "Authorization: Bearer ${authContent}"`;
+                }
+                curlCommand = `curl -X GET "${baseUrl}/${providerName}/models" \\\n${authHeader}`;
+                await copyToClipboard(curlCommand, `📋 /models cURL copied for '${providerName}'!`);
+                return;
+            }
 
+            // Build auth headers based on API type
             if (apiType === 'openai') {
                 // Build Authorization header for OpenAI
                 let authContent = `[STATUS_CODES:${defaultStatusCodes}]`;
@@ -2264,7 +2315,7 @@ ${googApiKeyHeader}  -H "Content-Type: application/json" \\
                 showErrorToast('Unknown API type for cURL generation');
                 return;
             }
-            
+
             await copyToClipboard(curlCommand, `📋 cURL command copied for provider '${providerName}'! Ready to test in terminal.`);
         }
 
